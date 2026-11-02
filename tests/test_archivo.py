@@ -58,7 +58,9 @@ def test_cp029_columnas_obligatorias_faltantes(app):
     expect(app.t('btn-descargar-validas')).to_be_disabled()
 
 
-@pytest.mark.xfail(strict=True, reason='VAL-1: con columnas obligatorias faltantes la fila aparece como "Correcta"')
 def test_cp029_fila_incompleta_no_aparece_como_correcta(app):
+    """Regresión de VAL-1: antes la fila aparecía como "Correcta" aunque faltaban 6 columnas obligatorias."""
     app.subir_archivo(DATOS / 'columnas_faltantes.xlsx')
-    assert app.estado_fila(2) != 'correcto'
+    assert app.estado_fila(2) == 'error'
+    assert 'Fila incompleta: tu archivo no trae 5 columnas obligatorias' in app.texto_fila(2)
+    assert app.resumen() == {'total': 1, 'correcto': 0, 'advertencia': 0, 'error': 1}

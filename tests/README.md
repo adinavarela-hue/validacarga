@@ -35,11 +35,13 @@ py -3.12 -m pytest --html=reporte/reporte.html --self-contained-html
 
 ## Bugs conocidos
 
-Las pruebas marcadas `xfail(strict=True)` documentan un bug abierto: la suite sigue en verde,
-y cuando el bug se corrija la prueba falla a propósito para avisar que hay que quitar la marca.
+Un bug abierto se documenta con `xfail(strict=True)`: la suite sigue en verde y, cuando el bug se corrige,
+la prueba falla a propósito para avisar que hay que quitar la marca.
 
-- **VAL-1** · `test_cp029_fila_incompleta_no_aparece_como_correcta`: con columnas obligatorias faltantes, la fila aparece como "Correcta".
+Así se manejó **VAL-1** (fila incompleta aparecía como "Correcta"): se registró con `xfail`, se corrigió en
+`js/validador.js` y la prueba `test_cp029_fila_incompleta_no_aparece_como_correcta` quedó como regresión normal.
+No hay bugs abiertos.
 
 ## Resultado de referencia
 
-01/11/2026 · Chrome · 59 aprobadas, 1 fallo esperado (CP-029) · ~45 s · dos corridas seguidas en verde.
+02/11/2026 · Chrome · 60 de 60 aprobadas · ~45 s · dos corridas seguidas en verde.

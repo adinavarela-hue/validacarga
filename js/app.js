@@ -611,14 +611,16 @@
       const porCol = {};
       const sueltas = [];
       f.incidencias.forEach(i => {
+        if (i.faltantes) return; // se muestra como "Falta llenar" y con las celdas rojas
         if (i.columna && cols.some(c => c.nombre === i.columna)) (porCol[i.columna] = porCol[i.columna] || []).push(i);
         else sueltas.push(i);
       });
       const valores = cols.map(c => f.datos[c.nombre]);
       // Si faltan columnas obligatorias, la fila no se puede cargar aunque lo que trae esté bien
       const oblFaltantes = cols.filter(c => c.obligatorio && r.faltantes.includes(c.nombre)).map(c => c.nombre);
-      const estadoFila = f.estado === 'error' ? 'error' : (oblFaltantes.length ? 'incompleta' : f.estado);
-      const obs = f.incidencias.map(i => `${i.columna ? i.columna + ': ' : ''}${i.motivo}`)
+      const propias = f.incidencias.filter(i => !i.faltantes);
+      const estadoFila = propias.some(i => i.severidad === 'error') ? 'error' : (oblFaltantes.length ? 'incompleta' : f.estado);
+      const obs = propias.map(i => `${i.columna ? i.columna + ': ' : ''}${i.motivo}`)
         .concat(oblFaltantes.length ? [`Falta llenar: ${oblFaltantes.join(', ')}`] : []).join(' | ');
       const fila = hoja.addRow(valores.concat([f.fila, etiqueta[estadoFila], obs]));
       cols.forEach((c, k) => {
@@ -778,7 +780,7 @@
           cel.note = inc.map(i => `${i.motivo}\nCómo corregirlo: ${i.correccion}`).join('\n\n');
         }
       });
-      f.incidencias.forEach(i => revision.push([n, f.fila, { error: 'Error', advertencia: 'Advertencia' }[i.severidad], i.columna, i.valor, i.motivo, i.correccion]));
+      f.incidencias.filter(i => !i.faltantes).forEach(i => revision.push([n, f.fila, { error: 'Error', advertencia: 'Advertencia' }[i.severidad], i.columna, i.valor, i.motivo, i.correccion]));
       r.faltantes.filter(c => oblig[c]).forEach(c => revision.push([n, f.fila, 'Falta', c, '', 'Tu archivo no trae esta columna obligatoria.', 'Llenarla en la base.']));
     });
 

@@ -6,11 +6,11 @@ import openpyxl
 
 ARCHIVO = pathlib.Path(__file__).parent.parent / 'docs' / 'casos-de-prueba.xlsx'
 FECHA = datetime.date(2026, 11, 2)
-CORRIDA = 'Prueba automatizada aprobada: Windows 11 · Chrome y GitHub Actions (59 aprobadas, 1 fallo esperado).'
+CORRIDA = 'Prueba automatizada aprobada: Chrome y GitHub Actions (60 de 60 aprobadas).'
 
 # Casos con algo distinto a "Aprobado sin bug"
 ESPECIALES = {
-    'CP-029': ('Fallido', 'Aviso de columnas faltantes y descarga deshabilitada: OK. Pero la fila 2 aparece como "Correcta" y el resumen cuenta 1 correcta.', 'VAL-1'),
+    'CP-029': ('Aprobado', CORRIDA + ' Primera corrida (02/11/2026): Fallido, la fila aparecía como "Correcta". Corregido en VAL-1 y verificado.', 'VAL-1'),
     'CP-046': ('Aprobado', CORRIDA + ' Antes de la corrección duplicaba la lista de sucursales.', 'VAL-3'),
     'CP-047': ('Aprobado', CORRIDA + ' Una sola validación G2:G5000.', 'VAL-3'),
     'CP-057': ('Aprobado', CORRIDA + ' Regresión del error de JavaScript al cambiar de modo.', 'VAL-2'),

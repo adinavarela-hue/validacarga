@@ -120,6 +120,8 @@
     };
 
     // Aunque falten columnas, se revisan las que sí vienen (útil para archivos que acumulan información).
+    // Pero ninguna fila puede quedar "Correcta" si faltan columnas obligatorias (VAL-1).
+    const oblFaltantes = perfil.columnas.filter(c => c.obligatorio && mapa.indice[c.nombre] === undefined).map(c => c.nombre);
     {
       const ctx = { vistos: {}, hoy, utiles: utilidades };
       filas.forEach((celdas, k) => {
@@ -147,6 +149,13 @@
         });
 
         perfil.validarFila(datos, { agregar, SEV, ctx, fila: numFila });
+        if (oblFaltantes.length) {
+          incidencias.push({
+            severidad: SEV.ERROR, columna: 'Columnas faltantes', valor: '', faltantes: true,
+            motivo: `Fila incompleta: tu archivo no trae ${oblFaltantes.length === 1 ? 'la columna obligatoria' : `${oblFaltantes.length} columnas obligatorias`} (${oblFaltantes.join(', ')}).`,
+            correccion: 'Agregar esas columnas al archivo y llenarlas antes de subirlo.'
+          });
+        }
         resultado.filas.push({ fila: numFila, estado: estadoDe(incidencias), incidencias, datos, celdas });
       });
     }

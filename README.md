@@ -68,8 +68,8 @@ Registrados en Jira (espacio **ValidaCarga**, clave VAL) con pasos, resultado es
 
 | Bug | Resumen | Severidad | Caso | Estado |
 |---|---|---|---|---|
-| VAL-1 | Fila con columnas obligatorias faltantes aparece como "Correcta" | Alta | CP-029 | Abierto · documentado con `xfail` estricto |
+| VAL-1 | Fila con columnas obligatorias faltantes aparece como "Correcta" | Alta | CP-029 | Corregido y verificado (lo detectó la prueba `xfail` estricta) |
 | VAL-2 | Error de JavaScript al pasar a "Ejemplos" con una plantilla cargada | Media | CP-057 | Corregido y verificado |
 | VAL-3 | "Agregar a mi archivo" duplica las listas desplegables y pierde las de formato moderno | Alta | CP-046, CP-047 | Corregido y verificado |
 
-**Última corrida (02/11/2026):** 54 de 57 casos aprobados, 1 fallido (VAL-1), 2 manuales pendientes. Resultados por caso en [`docs/casos-de-prueba.xlsx`](docs/casos-de-prueba.xlsx).
+**Última corrida (02/11/2026):** 55 de 57 casos aprobados y 2 manuales pendientes; suite automatizada 60 de 60. Primera corrida: 54 aprobados y 1 fallido (VAL-1). Resultados por caso en [`docs/casos-de-prueba.xlsx`](docs/casos-de-prueba.xlsx).
