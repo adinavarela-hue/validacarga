@@ -59,7 +59,7 @@ def test_cp029_columnas_obligatorias_faltantes(app):
 
 
 def test_cp029_fila_incompleta_no_aparece_como_correcta(app):
-    """Regresión de VAL-1: antes la fila aparecía como "Correcta" aunque faltaban 6 columnas obligatorias."""
+    """Regresión de VAL-1: antes la fila aparecía como "Correcta" aunque faltaban 5 columnas obligatorias."""
     app.subir_archivo(DATOS / 'columnas_faltantes.xlsx')
     assert app.estado_fila(2) == 'error'
     assert 'Fila incompleta: tu archivo no trae 5 columnas obligatorias' in app.texto_fila(2)
