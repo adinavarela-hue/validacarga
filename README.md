@@ -1,5 +1,7 @@
 # ValidaCarga
 
+[![Pruebas](https://github.com/adinavarela-hue/validacarga/actions/workflows/pruebas.yml/badge.svg)](https://github.com/adinavarela-hue/validacarga/actions/workflows/pruebas.yml)
+
 Validador de archivos de carga masiva (Excel / CSV) que revisa cada fila **antes** de subirla a un portal y explica qué falla, en qué columna, por qué y cómo corregirlo.
 
 Proyecto de portafolio QA de **Adina Varela**. Nació de tres bugs reales que encontré en mi trabajo en telecomunicaciones:
@@ -58,4 +60,4 @@ https://adinavarela-hue.github.io/validacarga/
 - [Plan de pruebas](docs/plan-de-pruebas.md) — alcance, riesgos, técnicas, criterios y gestión de defectos.
 - [Casos de prueba](docs/casos-de-prueba.xlsx) — 57 casos con valores límite, clases de equivalencia, tablas de decisión y trazabilidad a funciones y riesgos. Se generan desde `tests/casos_de_prueba.py` con `python tests/generar_casos_xlsx.py`.
 - Datos de prueba en `tests/datos/` (se regeneran con `python tests/generar_datos.py`).
-- Pruebas automatizadas (Playwright + pytest): *en construcción.*
+- [Pruebas automatizadas](tests/README.md) con Playwright + pytest: 55 casos automatizados, Page Object, revisión de los Excel descargados y de la red. Corren solas en GitHub Actions en cada cambio.
