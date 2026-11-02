@@ -55,4 +55,5 @@ https://adinavarela-hue.github.io/validacarga/
 
 ## Pruebas
 
-Plan de pruebas, casos de prueba y pruebas automatizadas (Playwright + pytest): *en construcción.*
+- [Plan de pruebas](docs/plan-de-pruebas.md) — alcance, riesgos, técnicas, criterios y gestión de defectos.
+- Casos de prueba y pruebas automatizadas (Playwright + pytest): *en construcción.*
