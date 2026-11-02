@@ -1,0 +1,2349 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ValidaCarga</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Valida archivos Excel o CSV fila por fila antes de subirlos a un portal. Todo corre en tu navegador.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Concepto: una mesa de inspección — panel de control a la izquierda, bitácora fila por fila a la derecha.
+   Tema oscuro por defecto ("noche petróleo"); el claro se activa con el botón del encabezado. */
+:root {
+  --papel: #0c1317;
+  --hoja: #131d22;
+  --hoja-2: #18252b;
+  --tinta: #e3e9eb;
+  --tinta-suave: #91a2a9;
+  --linea: #243339;
+  --rejilla: rgba(126, 168, 186, 0.07);
+  --acento: #8ab8cc;          /* texto, bordes e íconos */
+  --acento-fuerte: #1d6a85;   /* rellenos: botón principal, selección */
+  --sobre-acento: #f2f8fa;
+  --acento-tenue: #142d37;
+  --ok: #5cc48e;   --ok-fondo: #13291c;
+  --warn: #e3ae4c; --warn-fondo: #33270f;
+  --err: #ef8078;  --err-fondo: #371a18;
+  --sombra: 0 1px 0 rgba(255,255,255,0.03) inset, 0 8px 24px rgba(0,0,0,0.25);
+  --f-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-texto: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-datos: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --radio: 10px;
+  color-scheme: dark;
+}
+:root[data-theme="light"] {
+  --papel: #edf1f2;
+  --hoja: #ffffff;
+  --hoja-2: #f5f8f9;
+  --tinta: #15232a;
+  --tinta-suave: #52636b;
+  --linea: #d3dde0;
+  --rejilla: rgba(21, 95, 120, 0.07);
+  --acento: #155f78;
+  --acento-fuerte: #155f78;
+  --sobre-acento: #ffffff;
+  --acento-tenue: #e1edf1;
+  --ok: #1f7a4d;   --ok-fondo: #e3f2ea;
+  --warn: #935d00; --warn-fondo: #fbf0da;
+  --err: #b4322b;  --err-fondo: #fae5e3;
+  --sombra: 0 1px 2px rgba(21, 35, 42, 0.06), 0 6px 18px rgba(21, 35, 42, 0.05);
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body {
+  background: var(--papel); color: var(--tinta);
+  font: 15px/1.55 var(--f-texto);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 40px;
+}
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; line-height: 1.15; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+.mono { font-family: var(--f-datos); font-size: 0.86em; }
+
+.marco { max-width: 1280px; margin: 0 auto; }
+
+/* Encabezado: franja a todo lo ancho con rejilla de hoja de cálculo */
+.franja {
+  margin-left: calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
+  margin-right: calc(-1 * max(16px, env(safe-area-inset-right, 0px)));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  border-bottom: 1px solid var(--linea);
+  background-color: var(--hoja);
+  background-image:
+    linear-gradient(var(--rejilla) 1px, transparent 1px),
+    linear-gradient(90deg, var(--rejilla) 1px, transparent 1px);
+  background-size: 32px 24px;
+  background-position: -1px -1px;
+}
+.cabecera { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 18px 32px; padding-block: 26px 22px; }
+.marca { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.logo { display: flex; align-items: center; gap: 12px; }
+.logo svg { flex: none; }
+.marca h1 { font-size: clamp(28px, 4vw, 40px); font-weight: 700; letter-spacing: -0.02em; }
+.marca h1 span { color: var(--acento); }
+.marca p { margin: 0; color: var(--tinta-suave); max-width: 62ch; }
+.cabecera-der { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.privacidad { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--tinta-suave); border: 1px solid var(--linea); border-radius: 999px; padding: 6px 12px; background: var(--papel); }
+.privacidad svg { flex: none; color: var(--ok); }
+.tema { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border: 1px solid var(--linea); border-radius: 999px; background: var(--papel); cursor: pointer; }
+.tema span { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 13px; color: var(--tinta-suave); }
+:root:not([data-theme="light"]) .tema .t-oscuro,
+:root[data-theme="light"] .tema .t-claro { background: var(--acento-fuerte); color: var(--sobre-acento); }
+
+/* Recorrido de tres pasos (es una secuencia real) */
+.recorrido { display: flex; flex-wrap: wrap; gap: 8px 22px; padding-block: 0 20px; margin: 0; list-style: none; font-size: 13px; color: var(--tinta-suave); counter-reset: paso; }
+.recorrido li { display: flex; align-items: center; gap: 8px; counter-increment: paso; }
+.recorrido li::before { content: counter(paso); display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--acento); color: var(--acento); font: 600 11px/1 var(--f-datos); }
+.recorrido b { color: var(--tinta); font-weight: 500; }
+
+/* Distribución */
+.mesa { display: grid; padding-top: 28px; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: 28px; padding-top: 24px; align-items: start; }
+@media (max-width: 900px) { .mesa { grid-template-columns: minmax(0, 1fr); } }
+
+.paso { display: flex; flex-direction: column; gap: 12px; }
+.panel { display: flex; flex-direction: column; gap: 28px; }
+.etiqueta { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--tinta-suave); }
+
+/* Perfiles */
+.perfiles { display: flex; flex-direction: column; gap: 8px; border: 0; margin: 0; padding: 0; }
+.perfil { position: relative; display: block; padding: 12px 14px 12px 40px; border: 1px solid var(--linea); border-radius: var(--radio); background: var(--hoja); cursor: pointer; transition: border-color .15s; }
+.perfil:hover { border-color: var(--acento); }
+.perfil input { position: absolute; left: 14px; top: 15px; accent-color: var(--acento); margin: 0; }
+.perfil strong { display: block; font-size: 15px; }
+.perfil .destino { font-size: 12px; color: var(--tinta-suave); }
+.perfil .detalle { display: none; margin-top: 6px; font-size: 13px; color: var(--tinta-suave); }
+.perfil:has(input:checked) { border-color: var(--acento); background: var(--acento-tenue); }
+.perfil:has(input:checked) .detalle { display: block; }
+.origen { display: block; margin-top: 6px; font-size: 12.5px; color: var(--tinta); border-top: 1px dashed var(--linea); padding-top: 6px; }
+.origen b { color: var(--acento); font-weight: 600; }
+
+/* Zona de carga */
+.zona { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; padding: 22px 16px; border: 1.5px dashed var(--linea); border-radius: var(--radio); background: var(--hoja); cursor: pointer; transition: border-color .15s, background .15s; }
+.zona:hover, .zona.arrastrando { border-color: var(--acento); background: var(--acento-tenue); }
+.zona strong { font-size: 15px; }
+.zona small { color: var(--tinta-suave); }
+.zona input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.archivo-actual { display: flex; flex-direction: column; align-items: stretch; gap: 8px; font-size: 13px; color: var(--tinta-suave); min-width: 0; }
+.archivo-actual .mono { color: var(--tinta); overflow-wrap: anywhere; }
+.chip-muestra { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--acento); border: 1px solid var(--acento); border-radius: 4px; padding: 1px 6px; flex: none; }
+
+.boton { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 9px 14px; border-radius: 8px; border: 1px solid var(--linea); background: var(--hoja); cursor: pointer; font-weight: 500; font-size: 14px; text-align: center; }
+.boton:hover { border-color: var(--acento); color: var(--acento); }
+.boton.principal { background: var(--acento-fuerte); border-color: var(--acento-fuerte); color: var(--sobre-acento); }
+.boton.principal:hover { filter: brightness(1.12); color: var(--sobre-acento); }
+.boton:disabled { opacity: .45; cursor: not-allowed; filter: none; }
+.botones { display: flex; flex-wrap: wrap; gap: 8px; }
+.botones .boton { flex: 1 1 140px; }
+.boton.limpiar { width: 100%; border-style: dashed; color: var(--tinta-suave); }
+.boton.limpiar:hover:not(:disabled) { border-color: var(--err); color: var(--err); }
+
+/* Resultados */
+.resultados { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.titulo-res { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; }
+.titulo-res h2 { font-size: 22px; }
+.titulo-res p { margin: 0; color: var(--tinta-suave); font-size: 13px; }
+
+.marcador { box-shadow: var(--sombra); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--linea); border-radius: var(--radio); background: var(--hoja); overflow: hidden; }
+@media (max-width: 560px) { .marcador { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.cifra { display: flex; flex-direction: column; gap: 2px; padding: 14px 16px; border-left: 1px solid var(--linea); }
+.cifra:first-child { border-left: 0; }
+@media (max-width: 560px) { .cifra:nth-child(3) { border-left: 0; } .cifra:nth-child(n+3) { border-top: 1px solid var(--linea); } }
+.cifra b { font-family: var(--f-display); font-size: 30px; line-height: 1; font-variant-numeric: tabular-nums; }
+.cifra span { font-size: 13px; color: var(--tinta-suave); }
+.cifra.ok b { color: var(--ok); } .cifra.warn b { color: var(--warn); } .cifra.err b { color: var(--err); }
+
+.barra { display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: var(--linea); }
+.barra i { display: block; height: 100%; }
+
+.aviso { border: 1px solid var(--linea); border-radius: var(--radio); padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; background: var(--hoja); }
+.aviso.err { border-color: var(--err); background: var(--err-fondo); }
+.aviso.warn { border-color: var(--warn); background: var(--warn-fondo); }
+.aviso ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.aviso .como { color: var(--tinta-suave); }
+
+.filtros { display: flex; flex-wrap: wrap; gap: 6px; }
+.filtro { border: 1px solid var(--linea); background: var(--hoja); border-radius: 999px; padding: 5px 12px; font-size: 13px; cursor: pointer; }
+.filtro[aria-pressed="true"] { background: var(--tinta); color: var(--papel); border-color: var(--tinta); }
+.filtro .n { font-variant-numeric: tabular-nums; opacity: .7; margin-left: 4px; }
+
+.tabla-caja { box-shadow: var(--sombra); overflow-x: auto; border: 1px solid var(--linea); border-radius: var(--radio); background: var(--hoja); }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 760px; }
+th { text-align: left; font-size: 11.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--tinta-suave); padding: 10px 12px; border-bottom: 1px solid var(--linea); background: var(--hoja-2); position: sticky; top: 0; }
+td { padding: 9px 12px; vertical-align: top; border-bottom: 1px solid var(--linea); }
+tbody.grupo:last-child tr:last-child td { border-bottom: 0; }
+td.num { font-family: var(--f-datos); font-variant-numeric: tabular-nums; color: var(--tinta-suave); width: 56px; border-left: 3px solid transparent; }
+tbody[data-estado="error"] td.num { border-left-color: var(--err); }
+tbody[data-estado="advertencia"] td.num { border-left-color: var(--warn); }
+tbody[data-estado="correcto"] td.num { border-left-color: var(--ok); }
+td.col { font-weight: 500; white-space: nowrap; }
+td.val { font-family: var(--f-datos); font-size: 12.5px; min-width: 150px; max-width: 220px; overflow-wrap: break-word; }
+td.val em { font-style: normal; color: var(--tinta-suave); }
+td.como { color: var(--tinta-suave); }
+.estado { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.estado::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.estado.correcto { color: var(--ok); background: var(--ok-fondo); }
+.estado.advertencia { color: var(--warn); background: var(--warn-fondo); }
+.estado.error { color: var(--err); background: var(--err-fondo); }
+.sev { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.sev.error { color: var(--err); } .sev.advertencia { color: var(--warn); }
+.vacio-tabla { padding: 28px 16px; text-align: center; color: var(--tinta-suave); }
+.nota-tabla { font-size: 12.5px; color: var(--tinta-suave); }
+
+.descargas { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.estado-msg { font-size: 13px; color: var(--tinta-suave); }
+.estado-msg:empty { display: none; }
+.estado-msg.err { color: var(--err); }
+
+.pie { margin-top: 36px; padding-top: 16px; border-top: 1px solid var(--linea); display: flex; flex-wrap: wrap; gap: 8px 24px; justify-content: space-between; font-size: 13px; color: var(--tinta-suave); }
+.pie a { color: var(--acento); }
+
+/* Selector de pestaña */
+.archivo-nombre { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.archivo-actual:empty { display: none; }
+.selector-hoja { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--tinta-suave); }
+.selector-hoja em { font-style: normal; color: var(--acento); }
+.selector-hoja select { width: 100%; padding: 8px 10px; border: 1px solid var(--linea); border-radius: 8px; background: var(--hoja); color: var(--tinta); font-size: 14px; cursor: pointer; }
+.selector-hoja select:hover { border-color: var(--acento); }
+
+/* Modo y plantilla */
+.sub { font-size: 12.5px; color: var(--tinta-suave); margin: 0; }
+.min0 { min-width: 0; }
+.subpanel { display: flex; flex-direction: column; gap: 10px; }
+.segmentos { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--linea); border-radius: 9px; padding: 3px; background: var(--hoja); gap: 3px; }
+.segmento { border: 0; background: transparent; padding: 7px 10px; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 14px; color: var(--tinta-suave); }
+.segmento[aria-pressed="true"] { background: var(--acento-fuerte); color: var(--sobre-acento); }
+.segmento:hover:not([aria-pressed="true"]) { color: var(--acento); }
+.zona { position: relative; }
+.zona.bloqueada { opacity: .55; cursor: not-allowed; }
+.zona.bloqueada:hover { border-color: var(--linea); background: var(--hoja); }
+#plantilla-actual:empty { display: none; }
+#plantilla-actual { display: flex; flex-direction: column; gap: 10px; }
+.plantilla-cabeza { display: flex; justify-content: space-between; align-items: start; gap: 10px; padding: 10px 12px; border: 1px solid var(--acento); background: var(--acento-tenue); border-radius: var(--radio); }
+.plantilla-cabeza .mono { overflow-wrap: anywhere; }
+.enlace { border: 0; background: none; color: var(--acento); cursor: pointer; font-weight: 600; font-size: 13px; padding: 2px 0; flex: none; }
+.enlace:hover { text-decoration: underline; }
+.reglas { border: 1px solid var(--linea); border-radius: var(--radio); background: var(--hoja); }
+.reglas-titulo { display: flex; flex-direction: column; gap: 2px; padding: 9px 12px; border-bottom: 1px solid var(--linea); font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--tinta-suave); }
+.reglas-titulo .sub { text-transform: none; letter-spacing: 0; font-weight: 400; }
+.regla { display: flex; flex-direction: column; gap: 5px; padding: 8px 12px; border-bottom: 1px solid var(--linea); }
+.regla:last-child { border-bottom: 0; }
+.regla-col { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 500; cursor: pointer; min-width: 0; }
+.regla-col span { overflow-wrap: anywhere; }
+.regla-col input { accent-color: var(--acento); margin: 0; flex: none; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; padding-left: 22px; }
+.chip { font-size: 11.5px; padding: 1px 7px; border-radius: 4px; background: var(--acento-tenue); color: var(--acento); white-space: nowrap; }
+.chip.tenue { background: transparent; border: 1px dashed var(--linea); color: var(--tinta-suave); }
+.chip.aviso-chip { background: var(--warn-fondo); color: var(--warn); }
+.aviso.ok { border-color: var(--ok); background: var(--ok-fondo); }
+details.aviso summary { cursor: pointer; }
+details.aviso ul { margin-top: 6px; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+</style>
+<script>
+  try { if (localStorage.getItem('validacarga-tema') === 'light') document.documentElement.setAttribute('data-theme', 'light'); } catch (e) {}
+</script>
+</head>
+<body>
+<div class="franja">
+  <div class="marco">
+    <header class="cabecera">
+      <div class="marca">
+        <div class="logo">
+          <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true">
+            <rect x="1" y="1" width="38" height="38" rx="9" style="fill:var(--acento-fuerte)"/>
+            <g style="fill:var(--sobre-acento)" opacity=".28"><rect x="8" y="9" width="24" height="5" rx="1.5"/><rect x="8" y="17.5" width="24" height="5" rx="1.5"/><rect x="8" y="26" width="24" height="5" rx="1.5"/></g>
+            <rect x="8" y="9" width="5" height="5" rx="1.5" style="fill:var(--ok)"/>
+            <rect x="8" y="17.5" width="5" height="5" rx="1.5" style="fill:var(--warn)"/>
+            <rect x="8" y="26" width="5" height="5" rx="1.5" style="fill:var(--err)"/>
+          </svg>
+          <h1>Valida<span>Carga</span></h1>
+        </div>
+        <p>Revisa tu archivo fila por fila contra la plantilla oficial del portal antes de subirlo: qué está bien, qué falla, por qué y cómo corregirlo.</p>
+      </div>
+      <div class="cabecera-der">
+        <div class="privacidad" data-testid="aviso-privacidad">
+          <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1 2 3.5v4C2 11 4.6 14.2 8 15c3.4-.8 6-4 6-7.5v-4L8 1Zm0 1.6 4.5 1.9v3c0 2.7-1.9 5.3-4.5 6V2.6Z"/></svg>
+          Tu archivo no sale de esta computadora
+        </div>
+        <button type="button" class="tema" id="btn-tema" data-testid="btn-tema" aria-label="Cambiar entre tema oscuro y claro">
+          <span class="t-oscuro"><svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.2 1.3A6.8 6.8 0 1 0 14.7 9.8 5.6 5.6 0 0 1 6.2 1.3Z"/></svg>Oscuro</span>
+          <span class="t-claro"><svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3.2" fill="currentColor"/><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 1v1.6M8 13.4V15M1 8h1.6M13.4 8H15M3 3l1.1 1.1M11.9 11.9 13 13M3 13l1.1-1.1M11.9 4.1 13 3"/></g></svg>Claro</span>
+        </button>
+      </div>
+    </header>
+    <ol class="recorrido" aria-label="Cómo funciona">
+      <li><b>Sube la plantilla oficial</b> del portal</li>
+      <li><b>Sube tu archivo</b> lleno</li>
+      <li><b>Corrige</b> y descarga solo las filas válidas</li>
+    </ol>
+  </div>
+</div>
+
+<div class="marco">
+
+  <main class="mesa">
+    <aside class="panel" aria-label="Configuración">
+      <section class="paso">
+        <span class="etiqueta" id="lbl-modo">1 · Contra qué reviso tu archivo</span>
+        <div class="segmentos" role="group" aria-labelledby="lbl-modo">
+          <button type="button" class="segmento" data-modo="plantilla" data-testid="modo-plantilla" aria-pressed="true">Plantilla oficial</button>
+          <button type="button" class="segmento" data-modo="ejemplos" data-testid="modo-ejemplos" aria-pressed="false">Ejemplos</button>
+        </div>
+
+        <div id="panel-plantilla" class="subpanel">
+          <label class="zona" id="zona-plantilla" data-testid="zona-plantilla">
+            <input type="file" id="input-plantilla" data-testid="input-plantilla" accept=".xlsx">
+            <strong>Sube la plantilla oficial del portal</strong>
+            <small>El Excel en blanco que te da el portal para llenar (.xlsx). De ahí salen las columnas y las listas.</small>
+          </label>
+          <div id="plantilla-actual" data-testid="plantilla-actual"></div>
+        </div>
+
+        <div id="panel-ejemplos" class="subpanel" hidden>
+          <p class="sub">Perfiles armados a partir de tres bugs reales. Datos ficticios.</p>
+          <fieldset class="perfiles" id="perfiles" aria-label="Perfil de ejemplo"></fieldset>
+        </div>
+      </section>
+
+      <section class="paso">
+        <span class="etiqueta">2 · Tu archivo</span>
+        <label class="zona" id="zona" data-testid="zona-carga">
+          <input type="file" id="input-archivo" data-testid="input-archivo" accept=".xlsx,.xls,.csv">
+          <strong id="zona-texto">Arrastra tu Excel o CSV aquí</strong>
+          <small>o haz clic para elegirlo · .xlsx, .xls, .csv</small>
+        </label>
+        <div class="archivo-actual" id="archivo-actual" data-testid="archivo-actual"></div>
+        <div class="botones">
+          <button class="boton" id="btn-muestra" data-testid="btn-muestra" type="button">Probar con archivo de ejemplo</button>
+          <button class="boton" id="btn-plantilla" data-testid="btn-descargar-plantilla" type="button" hidden>Descargar plantilla</button>
+        </div>
+        <button class="boton limpiar" id="btn-limpiar" data-testid="btn-limpiar" type="button">Limpiar y empezar de nuevo</button>
+      </section>
+    </aside>
+
+    <section class="resultados" aria-live="polite" id="resultados" data-testid="resultados"></section>
+  </main>
+
+  <footer class="pie">
+    <span>ValidaCarga · proyecto de portafolio QA de Adina Varela. La plantilla, los perfiles y los datos de ejemplo son ficticios.</span>
+    <a href="https://github.com/adinavarela-hue/validacarga" target="_blank" rel="noopener">Código y pruebas en GitHub</a>
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+/*
+ * ValidaCarga — motor de validación (sin dependencias, corre en navegador y en Node).
+ * Recibe: un perfil, los encabezados y las filas del archivo (arreglos de celdas).
+ * Devuelve: incidencias a nivel archivo y resultado fila por fila.
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.Validador = factory();
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  const SEV = { ERROR: 'error', ADVERTENCIA: 'advertencia' };
+
+  /** Quita acentos, colapsa espacios y pasa a minúsculas. */
+  function normalizar(s) {
+    return String(s == null ? '' : s)
+      .normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/\s+/g, ' ').trim().toLowerCase();
+  }
+  /** Igual que normalizar, pero además elimina todos los espacios ("Tipo deCanal" = "Tipo de Canal"). */
+  function clave(s) { return normalizar(s).replace(/\s/g, ''); }
+
+  function texto(v) { return v == null ? '' : String(v); }
+  function vacio(v) { return texto(v).trim() === ''; }
+
+  /**
+   * Revisa un valor contra un catálogo con coincidencia EXACTA (como lo hace el portal).
+   * Si no es exacto pero se parece (acentos, mayúsculas, espacios), sugiere el valor correcto.
+   */
+  function revisarCatalogo(valor, opciones) {
+    const v = texto(valor);
+    if (opciones.includes(v)) return { ok: true };
+    const parecido = opciones.find(o => normalizar(o) === normalizar(v));
+    return { ok: false, sugerencia: parecido || null };
+  }
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+
+  /** Acepta DD/MM/AAAA, D/M/AAAA o AAAA-MM-DD. Devuelve {fecha, iso} o null si no es una fecha real. */
+  function leerFecha(valor) {
+    const s = texto(valor).trim();
+    let d, m, a;
+    let r = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (r) { d = +r[1]; m = +r[2]; a = +r[3]; }
+    else if ((r = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/))) { a = +r[1]; m = +r[2]; d = +r[3]; }
+    else return null;
+    const f = new Date(Date.UTC(a, m - 1, d));
+    if (f.getUTCFullYear() !== a || f.getUTCMonth() !== m - 1 || f.getUTCDate() !== d) return null;
+    return { fecha: f, iso: `${a}-${pad(m)}-${pad(d)}`, texto: `${pad(d)}/${pad(m)}/${a}` };
+  }
+
+  /** Convierte "$1,000.50" o 100 a número. Devuelve {numero, conFormato} o null. */
+  function leerMonto(valor) {
+    const s = texto(valor).trim();
+    if (s === '') return null;
+    const sinSimbolo = s.replace(/^\$\s*/, '').replace(/^MXN\s*/i, '').trim();
+    // Miles con coma solo si son grupos de 3 dígitos: "1,000" sí, "1,00" no (ambiguo)
+    if (!/^-?(\d+|\d{1,3}(,\d{3})+)(\.\d+)?$/.test(sinSimbolo)) return null;
+    const limpio = sinSimbolo.replace(/,/g, '');
+    return { numero: parseFloat(limpio), conFormato: limpio !== s };
+  }
+
+  /** Empareja los encabezados del archivo con las columnas del perfil. */
+  function mapearEncabezados(perfil, encabezados) {
+    const incidencias = [];
+    const indice = {};
+    const usados = new Set();
+    perfil.columnas.forEach(col => {
+      let i = encabezados.findIndex(h => texto(h) === col.nombre);
+      if (i === -1) {
+        i = encabezados.findIndex(h => clave(h) === clave(col.nombre));
+        if (i !== -1) {
+          incidencias.push({
+            severidad: SEV.ADVERTENCIA, columna: col.nombre, valor: texto(encabezados[i]),
+            motivo: `El encabezado "${texto(encabezados[i])}" no es idéntico a "${col.nombre}". ValidaCarga lo reconoce, pero el portal podría no hacerlo.`,
+            correccion: `Renombrar el encabezado a "${col.nombre}" exactamente.`
+          });
+        }
+      }
+      if (i === -1) {
+        if (col.obligatorio) {
+          incidencias.push({
+            severidad: SEV.ERROR, columna: col.nombre, valor: '',
+            motivo: `Falta la columna obligatoria "${col.nombre}".`,
+            correccion: `Agregar la columna "${col.nombre}" en la fila de encabezados.`
+          });
+        }
+        return;
+      }
+      indice[col.nombre] = i;
+      usados.add(i);
+    });
+    encabezados.forEach((h, i) => {
+      if (!usados.has(i) && !vacio(h)) {
+        incidencias.push({
+          severidad: SEV.ADVERTENCIA, columna: texto(h), valor: '',
+          motivo: `La columna "${texto(h)}" no forma parte del formato "${perfil.nombre}".`,
+          correccion: 'Eliminarla antes de subir el archivo, o confirmar que el portal la acepta.'
+        });
+      }
+    });
+    const fatal = incidencias.some(x => x.severidad === SEV.ERROR);
+    return { indice, incidencias, fatal };
+  }
+
+  /**
+   * Valida un archivo completo.
+   * @param {object} perfil  — definición de perfiles.js
+   * @param {Array} encabezados — primera fila del archivo
+   * @param {Array<Array>} filas — filas de datos (sin encabezado)
+   * @param {object} [opciones] — { hoy: Date } para pruebas reproducibles
+   */
+  function validar(perfil, encabezados, filas, opciones) {
+    const hoy = (opciones && opciones.hoy) || new Date();
+    const mapa = mapearEncabezados(perfil, encabezados || []);
+    const resultado = {
+      perfil: perfil.id, archivo: mapa.incidencias, filas: [], resumen: null, fatal: mapa.fatal,
+      indice: mapa.indice,
+      faltantes: perfil.columnas.filter(c => mapa.indice[c.nombre] === undefined).map(c => c.nombre)
+    };
+
+    // Aunque falten columnas, se revisan las que sí vienen (útil para archivos que acumulan información).
+    {
+      const ctx = { vistos: {}, hoy, utiles: utilidades };
+      filas.forEach((celdas, k) => {
+        if (!celdas || celdas.every(vacio)) return; // fila en blanco: se ignora
+        const datos = {};
+        perfil.columnas.forEach(col => {
+          const i = mapa.indice[col.nombre];
+          datos[col.nombre] = i === undefined ? '' : texto(celdas[i]);
+        });
+        const numFila = k + ((opciones && opciones.primeraFila) || 2); // fila real en Excel
+        const incidencias = [];
+        const agregar = (severidad, columna, motivo, correccion) => incidencias.push({
+          severidad, columna, valor: columna ? texto(datos[columna]) : '', motivo, correccion
+        });
+
+        // Reglas comunes: obligatorios y espacios sobrantes
+        perfil.columnas.forEach(col => {
+          if (mapa.indice[col.nombre] === undefined) return; // columna ausente: ya se reportó a nivel archivo
+          const v = datos[col.nombre];
+          if (col.obligatorio && vacio(v)) {
+            agregar(SEV.ERROR, col.nombre, 'Campo obligatorio vacío.', `Capturar ${col.nombre}.`);
+          } else if (!col.catalogo && v !== v.trim()) {
+            agregar(SEV.ADVERTENCIA, col.nombre, 'Tiene espacios al inicio o al final.', 'Quitar los espacios sobrantes.');
+          }
+        });
+
+        perfil.validarFila(datos, { agregar, SEV, ctx, fila: numFila });
+        resultado.filas.push({ fila: numFila, estado: estadoDe(incidencias), incidencias, datos, celdas });
+      });
+    }
+
+    resultado.resumen = resumir(resultado.filas);
+    return resultado;
+  }
+
+  function estadoDe(incidencias) {
+    if (incidencias.some(i => i.severidad === SEV.ERROR)) return 'error';
+    if (incidencias.length) return 'advertencia';
+    return 'correcto';
+  }
+
+  function resumir(filas) {
+    const r = { total: filas.length, correcto: 0, advertencia: 0, error: 0 };
+    filas.forEach(f => { r[f.estado]++; });
+    r.validas = r.correcto + r.advertencia;
+    return r;
+  }
+
+  /** Filas para el reporte de errores (una línea por incidencia). */
+  function filasReporte(resultado) {
+    const salida = [['Fila', 'Estado de la fila', 'Severidad', 'Columna', 'Valor', 'Motivo', 'Cómo corregirlo']];
+    resultado.archivo.forEach(i => salida.push(['Encabezados', 'archivo', i.severidad, i.columna, i.valor, i.motivo, i.correccion]));
+    resultado.filas.forEach(f => {
+      f.incidencias.forEach(i => salida.push([f.fila, f.estado, i.severidad, i.columna, i.valor, i.motivo, i.correccion]));
+    });
+    return salida;
+  }
+
+  /** Encabezado original + solo las filas sin errores (correctas y con advertencia), sin modificar. */
+  function filasValidas(resultado, encabezados) {
+    if (resultado.fatal) return [encabezados];
+    return [encabezados].concat(resultado.filas.filter(f => f.estado !== 'error').map(f => f.celdas));
+  }
+
+  /**
+   * Encuentra la fila de encabezados entre las primeras 10.
+   * Si se dan los encabezados esperados, elige la fila con más coincidencias; si no, la primera con 2+ celdas con texto.
+   */
+  function buscarEncabezados(filas, esperados) {
+    const limite = Math.min(filas.length, 10);
+    if (esperados && esperados.length) {
+      const claves = new Set(esperados.map(clave));
+      let mejor = -1, puntos = 0;
+      for (let i = 0; i < limite; i++) {
+        const n = (filas[i] || []).filter(h => claves.has(clave(h))).length;
+        if (n > puntos) { puntos = n; mejor = i; }
+      }
+      if (mejor >= 0) return mejor;
+    }
+    for (let i = 0; i < limite; i++) if ((filas[i] || []).filter(v => !vacio(v)).length >= 2) return i;
+    return 0;
+  }
+
+  const utilidades = { normalizar, clave, revisarCatalogo, leerFecha, leerMonto, vacio, texto };
+
+  return Object.assign({ SEV, validar, mapearEncabezados, filasReporte, filasValidas, buscarEncabezados }, utilidades);
+});
+
+</script>
+<script>
+/*
+ * ValidaCarga — perfiles de portal destino.
+ * Cada perfil define sus columnas, sus reglas por fila y un archivo de muestra con errores sembrados.
+ * Todos los datos son ficticios.
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.Perfiles = factory();
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  // ---------------------------------------------------------------------------
+  // Catálogos
+  // ---------------------------------------------------------------------------
+
+  /** Región → Estado → Ciudad → [Municipios]. Coincidencia exacta, como en el portal. */
+  const GEOGRAFIA = {
+    'Región 5': {
+      'Jalisco': {
+        'Guadalajara': ['Guadalajara', 'Zapopan', 'San Pedro Tlaquepaque', 'Tonalá'],
+        'Puerto Vallarta': ['Puerto Vallarta']
+      },
+      'Colima': {
+        'Colima': ['Colima', 'Villa de Álvarez'],
+        'Manzanillo': ['Manzanillo'],
+        'Tecomán': ['Tecomán']
+      },
+      'Nayarit': { 'Tepic': ['Tepic', 'Xalisco'] },
+      'Michoacán': { 'Morelia': ['Morelia'], 'Uruapan': ['Uruapan'] }
+    },
+    'Región 9': {
+      'Ciudad de México': { 'Ciudad de México': ['Benito Juárez', 'Coyoacán', 'Cuauhtémoc', 'Iztapalapa'] },
+      'Estado de México': { 'Toluca': ['Toluca', 'Metepec'], 'Naucalpan': ['Naucalpan de Juárez'] }
+    }
+  };
+  const TIPO_ALUMNO = ['Distribuidor', 'Empleado', 'Externo'];
+  const TIPO_CANAL = ['Detalle de Canal', 'Cadenas Comerciales', 'Masivo'];
+
+  const BOLSA = ['Agente', 'Master'];
+  const DENOMINACIONES = [10, 20, 30, 50, 80, 100, 150, 200, 300, 500];
+  const ESTATUS_RECARGA = ['Exitosa', 'Fallida', 'Cancelada'];
+
+  const TIPO_MOVIMIENTO = ['Portabilidad Entrante', 'Portabilidad Saliente', 'Reversión'];
+  const PROVEEDORES = ['Telcel', 'AT&T', 'Movistar', 'Bait', 'Wimo', 'Virgin Mobile'];
+
+  // ---------------------------------------------------------------------------
+  // Ayudas compartidas
+  // ---------------------------------------------------------------------------
+
+  /** Revisa un catálogo y registra el error con sugerencia si el valor solo "se parece". */
+  function catalogo(api, columna, valor, opciones, contexto) {
+    const u = api.ctx.utiles;
+    if (u.vacio(valor)) return false;
+    const r = u.revisarCatalogo(valor, opciones);
+    if (r.ok) return true;
+    if (r.sugerencia) {
+      api.agregar(api.SEV.ERROR, columna,
+        `Se parece a "${r.sugerencia}", pero no es idéntico (acentos, mayúsculas o espacios). El portal compara texto exacto y rechaza la fila.`,
+        `Escribir exactamente "${r.sugerencia}".`);
+    } else {
+      api.agregar(api.SEV.ERROR, columna,
+        `"${valor}" no existe en el catálogo${contexto ? ' ' + contexto : ''}.`,
+        `Usar uno de: ${opciones.slice(0, 6).join(', ')}${opciones.length > 6 ? '…' : ''}.`);
+    }
+    return false;
+  }
+
+  /** Registra duplicados: la primera aparición pasa, las siguientes se marcan. */
+  function duplicado(api, grupo, llave) {
+    const v = api.ctx.vistos;
+    v[grupo] = v[grupo] || {};
+    if (v[grupo][llave] !== undefined) return v[grupo][llave];
+    v[grupo][llave] = api.fila;
+    return null;
+  }
+
+  /** Número de 10 dígitos. Devuelve true si es válido. */
+  function telefono(api, columna, valor) {
+    const u = api.ctx.utiles;
+    if (u.vacio(valor)) return false;
+    const s = String(valor).trim();
+    if (/^\d{10}$/.test(s)) return true;
+    const soloDigitos = s.replace(/\D/g, '');
+    let correccion = 'Capturar el número a 10 dígitos, sin espacios, guiones ni lada internacional.';
+    if (soloDigitos.length === 12 && soloDigitos.startsWith('52')) correccion = `Quitar el prefijo 52: ${soloDigitos.slice(2)}.`;
+    else if (soloDigitos.length === 10) correccion = `Dejar solo dígitos: ${soloDigitos}.`;
+    api.agregar(api.SEV.ERROR, columna,
+      `"${s}" no es un número de 10 dígitos (tiene ${soloDigitos.length} dígitos${soloDigitos.length !== s.length ? ' y otros caracteres' : ''}).`,
+      correccion);
+    return false;
+  }
+
+  function fecha(api, columna, valor, { noFutura } = {}) {
+    const u = api.ctx.utiles;
+    if (u.vacio(valor)) return null;
+    const f = u.leerFecha(valor);
+    if (!f) {
+      api.agregar(api.SEV.ERROR, columna, `"${valor}" no es una fecha válida.`,
+        'Usar el formato DD/MM/AAAA con una fecha que exista (ej. 15/10/2026).');
+      return null;
+    }
+    if (noFutura) {
+      const h = api.ctx.hoy;
+      const hoyUTC = Date.UTC(h.getFullYear(), h.getMonth(), h.getDate());
+      if (f.fecha.getTime() > hoyUTC) {
+        api.agregar(api.SEV.ERROR, columna, `La fecha ${f.texto} es posterior a hoy.`, 'Revisar el día, mes y año.');
+      }
+    }
+    return f;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Perfil 1 — Alta masiva de usuarios (portal de capacitación)
+  // ---------------------------------------------------------------------------
+  const usuarios = {
+    id: 'usuarios',
+    nombre: 'Alta masiva de usuarios',
+    destino: 'Portal de capacitación',
+    descripcion: 'Campos obligatorios, catálogos en cascada (Región → Estado → Ciudad → Municipio) y usuarios duplicados.',
+    origen: 'La plantilla oficial fallaba en los campos de catálogo, incluso con su propia fila de muestra.',
+    columnas: [
+      { nombre: 'Usuario', obligatorio: true },
+      { nombre: 'Nombre', obligatorio: true },
+      { nombre: 'Apellido Paterno', obligatorio: true },
+      { nombre: 'Apellido Materno', obligatorio: false },
+      { nombre: 'Correo', obligatorio: true },
+      { nombre: 'Región', obligatorio: true, catalogo: true },
+      { nombre: 'Estado', obligatorio: true, catalogo: true },
+      { nombre: 'Ciudad', obligatorio: true, catalogo: true },
+      { nombre: 'Municipio', obligatorio: true, catalogo: true },
+      { nombre: 'Tipo de Alumno', obligatorio: true, catalogo: true },
+      { nombre: 'Tipo de Canal', obligatorio: true, catalogo: true }
+    ],
+    validarFila(d, api) {
+      const { SEV, agregar, ctx } = api;
+      const u = ctx.utiles;
+
+      // Usuario: 4 a 20 caracteres, letras y números
+      if (!u.vacio(d['Usuario'])) {
+        const usr = d['Usuario'].trim();
+        if (!/^[A-Za-z0-9]{4,20}$/.test(usr)) {
+          agregar(SEV.ERROR, 'Usuario', 'El usuario debe tener de 4 a 20 caracteres, solo letras y números.',
+            'Quitar espacios, guiones o acentos y ajustar la longitud.');
+        }
+        const previo = duplicado(api, 'usuario', usr.toUpperCase());
+        if (previo) agregar(SEV.ERROR, 'Usuario', `Usuario duplicado: ya aparece en la fila ${previo}.`,
+          'Dejar una sola fila por usuario o asignarle un usuario distinto.');
+      }
+
+      ['Nombre', 'Apellido Paterno', 'Apellido Materno'].forEach(c => {
+        if (!u.vacio(d[c]) && /[0-9@#$%&*_=+<>]/.test(d[c])) {
+          agregar(SEV.ERROR, c, 'Contiene números o símbolos.', 'Capturar solo letras.');
+        }
+      });
+
+      if (!u.vacio(d['Correo'])) {
+        const correo = d['Correo'].trim();
+        if (!/^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/.test(correo)) {
+          agregar(SEV.ERROR, 'Correo', 'El correo no tiene un formato válido.', 'Usar el formato nombre@dominio.com.');
+        } else {
+          const previo = duplicado(api, 'correo', correo.toLowerCase());
+          if (previo) agregar(SEV.ADVERTENCIA, 'Correo', `El mismo correo ya se usó en la fila ${previo}.`,
+            'El portal lo acepta, pero las contraseñas de ambos usuarios llegarán al mismo buzón. Confirmar que es intencional.');
+        }
+      }
+
+      // Cascada geográfica: solo se valida el hijo si el padre es válido
+      const regiones = Object.keys(GEOGRAFIA);
+      if (catalogo(api, 'Región', d['Región'], regiones)) {
+        const estados = Object.keys(GEOGRAFIA[d['Región']]);
+        // Estado válido pero de otra región: error de cascada con pista concreta
+        const otra = regiones.find(r => r !== d['Región'] && Object.keys(GEOGRAFIA[r]).includes(d['Estado']));
+        if (otra) {
+          agregar(SEV.ERROR, 'Estado', `${d['Estado']} no pertenece a ${d['Región']}; pertenece a ${otra}.`,
+            `Cambiar Región a "${otra}" o corregir el Estado.`);
+        } else if (catalogo(api, 'Estado', d['Estado'], estados, `para ${d['Región']}`)) {
+          const ciudades = Object.keys(GEOGRAFIA[d['Región']][d['Estado']]);
+          if (catalogo(api, 'Ciudad', d['Ciudad'], ciudades, `para ${d['Estado']}`)) {
+            const municipios = GEOGRAFIA[d['Región']][d['Estado']][d['Ciudad']];
+            catalogo(api, 'Municipio', d['Municipio'], municipios, `para ${d['Ciudad']}`);
+          }
+        }
+      }
+
+      catalogo(api, 'Tipo de Alumno', d['Tipo de Alumno'], TIPO_ALUMNO);
+      catalogo(api, 'Tipo de Canal', d['Tipo de Canal'], TIPO_CANAL);
+    },
+    muestra: {
+      archivo: 'muestra_alta_usuarios.xlsx',
+      encabezados: ['Usuario', 'Nombre', 'Apellido Paterno', 'Apellido Materno', 'Correo', 'Región', 'Estado', 'Ciudad', 'Municipio', 'Tipo de Alumno', 'Tipo de Canal'],
+      filas: [
+        ['GDLDEMO01', 'Mariana', 'Ochoa', 'Ruelas', 'capacitacion@distribuidora-demo.mx', 'Región 5', 'Jalisco', 'Guadalajara', 'Zapopan', 'Distribuidor', 'Detalle de Canal'],
+        ['GDLDEMO02', 'Luis Fernando', 'Ibarra', '', 'capacitacion@distribuidora-demo.mx', 'Región 5', 'Jalisco', 'Guadalajara', 'Tonalá', 'Distribuidor', 'Detalle de Canal'],
+        ['GDLDEMO03', 'Karla', 'Méndez', 'Solís', 'kmendez@distribuidora-demo.mx', 'Region 5', 'Jalisco', 'Guadalajara', 'Tlaquepaque', 'Distribuidor', 'Detalle de canal'],
+        ['MZODEMO01', 'Óscar', 'Valdivia', 'Ramos', 'ovaldivia@distribuidora-demo.mx', 'Región 5', 'Colima ', 'Manzanillo', 'Manzanillo', 'Distribuidor', 'Detalle de Canal'],
+        ['TCMDEMO01', 'Brenda', 'Cárdenas', 'Lara', 'bcardenas@distribuidora-demo.mx', 'Región 9', 'Colima', 'Tecomán', 'Tecomán', 'Empleado', 'Masivo'],
+        ['GDLDEMO01', 'Mariana', 'Ochoa', 'Ruelas', 'mochoa@distribuidora-demo.mx', 'Región 5', 'Jalisco', 'Guadalajara', 'Guadalajara', 'Distribuidor', 'Detalle de Canal'],
+        ['TPC DEMO', 'Jorge', 'Partida', 'Núñez', 'jpartida@distribuidora-demo', 'Región 5', 'Nayarit', 'Tepic', 'Xalisco', 'Vendedor', 'Detalle de Canal'],
+        ['MLMDEMO01', '', 'Zavala', 'Torres', 'czavala@distribuidora-demo.mx', 'Región 5', 'Michoacán', 'Morelia', 'Morelia', 'Externo', 'Cadenas Comerciales'],
+        ['CDMDEMO01', 'Paola', 'Rentería', 'Gil', 'prenteria@distribuidora-demo.mx', 'Región 9', 'Ciudad de México', 'Ciudad de México', 'Coyoacán', 'Empleado', 'Cadenas Comerciales'],
+        ['VALDEMO01', 'Ana Sofía', 'Lugo', 'Peña', 'alugo@distribuidora-demo.mx', 'Región 5', 'Colima', 'Colima', 'Villa de Alvarez', 'Distribuidor', 'Detalle de Canal']
+      ]
+    }
+  };
+
+  // ---------------------------------------------------------------------------
+  // Perfil 2 — Consolidado de recargas (ERP)
+  // ---------------------------------------------------------------------------
+  const recargas = {
+    id: 'recargas',
+    nombre: 'Consolidado de recargas',
+    destino: 'ERP de distribución',
+    descripcion: '"Agente" vs. "Master", números de 10 dígitos, montos válidos y recargas duplicadas.',
+    origen: 'El ERP descartaba en silencio las recargas con bolsa "Master": 60 recargas nunca entraron y no hubo ningún mensaje.',
+    columnas: [
+      { nombre: 'Folio', obligatorio: true },
+      { nombre: 'Fecha', obligatorio: true },
+      { nombre: 'Número de Agente', obligatorio: true },
+      { nombre: 'Nombre de Agente', obligatorio: true },
+      { nombre: 'Número Destino', obligatorio: true },
+      { nombre: 'Monto', obligatorio: true },
+      { nombre: 'Movimientos en la Bolsa de', obligatorio: true, catalogo: true },
+      { nombre: 'Estatus', obligatorio: true, catalogo: true }
+    ],
+    validarFila(d, api) {
+      const { SEV, agregar, ctx } = api;
+      const u = ctx.utiles;
+
+      if (!u.vacio(d['Folio'])) {
+        const previo = duplicado(api, 'folio', d['Folio'].trim());
+        if (previo) agregar(SEV.ERROR, 'Folio', `Folio duplicado: ya aparece en la fila ${previo}.`,
+          'Eliminar la fila repetida; si son recargas distintas, verificar el folio en el reporte de origen.');
+      }
+
+      const f = fecha(api, 'Fecha', d['Fecha'], { noFutura: true });
+      telefono(api, 'Número de Agente', d['Número de Agente']);
+      const destinoOk = telefono(api, 'Número Destino', d['Número Destino']);
+
+      let monto = null;
+      if (!u.vacio(d['Monto'])) {
+        const m = u.leerMonto(d['Monto']);
+        if (!m) {
+          agregar(SEV.ERROR, 'Monto', `"${d['Monto']}" no es un monto válido (texto, o separador de miles ambiguo).`, 'Capturar solo el número, por ejemplo 100.');
+        } else if (!DENOMINACIONES.includes(m.numero)) {
+          agregar(SEV.ERROR, 'Monto', `$${m.numero} no es una denominación de recarga válida.`,
+            `Usar una de: ${DENOMINACIONES.map(x => '$' + x).join(', ')}.`);
+        } else {
+          monto = m.numero;
+          if (m.conFormato) agregar(SEV.ADVERTENCIA, 'Monto', 'El monto trae símbolo de pesos, comas o espacios.',
+            `Dejar solo el número: ${m.numero}.`);
+        }
+      }
+
+      // La regla que originó el proyecto
+      const bolsa = d['Movimientos en la Bolsa de'];
+      if (!u.vacio(bolsa)) {
+        const r = u.revisarCatalogo(bolsa, BOLSA);
+        const valor = r.ok ? bolsa : r.sugerencia;
+        if (valor === 'Master') {
+          agregar(SEV.ERROR, 'Movimientos en la Bolsa de',
+            'El ERP solo acepta "Agente". Las filas con "Master" se descartan en silencio: la recarga no entra y no aparece ningún error.',
+            'Cambiar a "Agente" y poner en Número/Nombre de Agente la sucursal que realmente vendió la recarga.');
+        } else if (!r.ok) {
+          catalogo(api, 'Movimientos en la Bolsa de', bolsa, ['Agente']);
+        }
+      }
+
+      if (!u.vacio(d['Estatus'])) {
+        if (catalogo(api, 'Estatus', d['Estatus'], ESTATUS_RECARGA) && d['Estatus'] !== 'Exitosa') {
+          agregar(SEV.ERROR, 'Estatus', `Una recarga "${d['Estatus']}" no se carga al consolidado.`,
+            'Quitar la fila del archivo; solo se cargan recargas exitosas.');
+        }
+      }
+
+      // Posible duplicado con folio distinto: mismo destino, monto y día
+      if (destinoOk && monto !== null && f) {
+        const previo = duplicado(api, 'recarga', `${d['Número Destino'].trim()}|${monto}|${f.iso}`);
+        if (previo) agregar(SEV.ADVERTENCIA, 'Número Destino',
+          `Misma recarga que la fila ${previo} (mismo número, monto y fecha) con otro folio.`,
+          'Confirmar en el portal de origen que fueron dos recargas distintas antes de cargarlas.');
+      }
+    },
+    muestra: {
+      archivo: 'muestra_consolidado_recargas.xlsx',
+      encabezados: ['Folio', 'Fecha', 'Número de Agente', 'Nombre de Agente', 'Número Destino', 'Monto', 'Movimientos en la Bolsa de', 'Estatus'],
+      filas: [
+        ['RC-100231', '14/10/2026', '3310000001', 'SUC DEMO CENTRO', '3319876501', '100', 'Agente', 'Exitosa'],
+        ['RC-100232', '14/10/2026', '3310000001', 'SUC DEMO CENTRO', '3319876502', '50', 'Agente', 'Exitosa'],
+        ['RC-100233', '14/10/2026', '3310000099', 'ADMIN DEMO', '3319876503', '200', 'Master', 'Exitosa'],
+        ['RC-100234', '15/10/2026', '3310000099', 'ADMIN DEMO', '3319876504', '100', 'Master', 'Exitosa'],
+        ['RC-100235', '15/10/2026', '3310000002', 'SUC DEMO PLAZA', '331987650', '30', 'Agente', 'Exitosa'],
+        ['RC-100236', '15/10/2026', '3310000002', 'SUC DEMO PLAZA', '523319876506', '100', 'Agente', 'Exitosa'],
+        ['RC-100237', '16/10/2026', '3310000002', 'SUC DEMO PLAZA', '3319876507', '75', 'Agente', 'Exitosa'],
+        ['RC-100238', '16/10/2026', '3310000003', 'SUC DEMO NORTE', '3319876508', '$1,00', 'Agente', 'Exitosa'],
+        ['RC-100232', '16/10/2026', '3310000001', 'SUC DEMO CENTRO', '3319876509', '20', 'Agente', 'Exitosa'],
+        ['RC-100240', '31/09/2026', '3310000003', 'SUC DEMO NORTE', '3319876510', '100', 'Agente', 'Exitosa'],
+        ['RC-100241', '17/10/2026', '3310000003', 'SUC DEMO NORTE', '3319876511', '$150', 'Agente', 'Exitosa'],
+        ['RC-100242', '17/10/2026', '3310000001', 'SUC DEMO CENTRO', '3319876501', '100', 'Agente', 'Exitosa'],
+        ['RC-100243', '14/10/2026', '3310000001', 'SUC DEMO CENTRO', '3319876501', '100', 'Agente', 'Exitosa'],
+        ['RC-100244', '17/10/2026', '3310000003', 'SUC DEMO NORTE', '3319876513', '50', 'Agente', 'Fallida']
+      ]
+    }
+  };
+
+  // ---------------------------------------------------------------------------
+  // Perfil 3 — Reporte regulatorio de portabilidad
+  // ---------------------------------------------------------------------------
+
+  /** Detecta números capturados como rango/bloque. Devuelve {desde, hasta, cantidad} o null. */
+  function detectarRango(valor) {
+    const s = String(valor).trim();
+    let r = s.match(/^(\d{10})\s*(?:-|–|a|al|hasta)\s*(\d{10})$/i);
+    if (r) {
+      const a = Number(r[1]), b = Number(r[2]);
+      return { desde: r[1], hasta: r[2], cantidad: Math.abs(b - a) + 1 };
+    }
+    r = s.match(/^(\d{10})\s*(?:-|–|a|al|hasta)\s*(\d{1,4})$/i);
+    if (r) { // 3312345600-99 → hasta 3312345699
+      const hasta = r[1].slice(0, 10 - r[2].length) + r[2];
+      return { desde: r[1], hasta, cantidad: Math.abs(Number(hasta) - Number(r[1])) + 1 };
+    }
+    r = s.match(/^(\d{6,9})([Xx*]{1,4})$/);
+    if (r && (r[1].length + r[2].length) === 10) {
+      const n = r[2].length;
+      return { desde: r[1] + '0'.repeat(n), hasta: r[1] + '9'.repeat(n), cantidad: Math.pow(10, n) };
+    }
+    return null;
+  }
+
+  const portabilidad = {
+    id: 'portabilidad',
+    nombre: 'Reporte de portabilidad',
+    destino: 'Formato regulatorio',
+    descripcion: 'Una línea por número (no rangos por bloque), fechas válidas y tipo de movimiento.',
+    origen: 'El formato exigía una línea por número individual, y el archivo traía rangos por bloque.',
+    columnas: [
+      { nombre: 'Número', obligatorio: true },
+      { nombre: 'Tipo de Movimiento', obligatorio: true, catalogo: true },
+      { nombre: 'Fecha de Solicitud', obligatorio: true },
+      { nombre: 'Fecha de Ejecución', obligatorio: true },
+      { nombre: 'Proveedor Donador', obligatorio: true, catalogo: true },
+      { nombre: 'Proveedor Receptor', obligatorio: true, catalogo: true }
+    ],
+    validarFila(d, api) {
+      const { SEV, agregar, ctx } = api;
+      const u = ctx.utiles;
+
+      if (!u.vacio(d['Número'])) {
+        const rango = detectarRango(d['Número']);
+        if (rango) {
+          agregar(SEV.ERROR, 'Número',
+            `Es un rango por bloque (${rango.cantidad.toLocaleString('es-MX')} números). El formato exige una línea por número individual.`,
+            `Separar en ${rango.cantidad.toLocaleString('es-MX')} líneas, del ${rango.desde} al ${rango.hasta}, repitiendo los demás datos.`);
+        } else if (telefono(api, 'Número', d['Número'])) {
+          const previo = duplicado(api, 'numero', d['Número'].trim() + '|' + d['Tipo de Movimiento']);
+          if (previo) agregar(SEV.ERROR, 'Número', `El número ya aparece en la fila ${previo} con el mismo tipo de movimiento.`,
+            'Dejar una sola línea por número y movimiento.');
+        }
+      }
+
+      catalogo(api, 'Tipo de Movimiento', d['Tipo de Movimiento'], TIPO_MOVIMIENTO);
+
+      const fs = fecha(api, 'Fecha de Solicitud', d['Fecha de Solicitud'], { noFutura: true });
+      const fe = fecha(api, 'Fecha de Ejecución', d['Fecha de Ejecución']);
+      if (fs && fe && fe.fecha < fs.fecha) {
+        agregar(SEV.ERROR, 'Fecha de Ejecución',
+          `La ejecución (${fe.texto}) es anterior a la solicitud (${fs.texto}).`,
+          'Revisar ambas fechas; la ejecución debe ser el mismo día o posterior a la solicitud.');
+      }
+
+      const don = catalogo(api, 'Proveedor Donador', d['Proveedor Donador'], PROVEEDORES);
+      const rec = catalogo(api, 'Proveedor Receptor', d['Proveedor Receptor'], PROVEEDORES);
+      if (don && rec && d['Proveedor Donador'] === d['Proveedor Receptor']) {
+        agregar(SEV.ERROR, 'Proveedor Receptor', 'El proveedor donador y el receptor son el mismo.',
+          'Verificar el operador de origen y el de destino de la portabilidad.');
+      }
+    },
+    muestra: {
+      archivo: 'muestra_reporte_portabilidad.xlsx',
+      encabezados: ['Número', 'Tipo de Movimiento', 'Fecha de Solicitud', 'Fecha de Ejecución', 'Proveedor Donador', 'Proveedor Receptor'],
+      filas: [
+        ['3320001001', 'Portabilidad Entrante', '01/10/2026', '02/10/2026', 'Telcel', 'Wimo'],
+        ['3320001002', 'Portabilidad Entrante', '01/10/2026', '02/10/2026', 'AT&T', 'Wimo'],
+        ['3320001100-3320001199', 'Portabilidad Entrante', '03/10/2026', '04/10/2026', 'Movistar', 'Wimo'],
+        ['33200012XX', 'Portabilidad Saliente', '05/10/2026', '06/10/2026', 'Wimo', 'Telcel'],
+        ['3320001003', 'Portabilidad entrante', '05/10/2026', '06/10/2026', 'Bait', 'Wimo'],
+        ['3320001004', 'Portabilidad Saliente', '08/10/2026', '07/10/2026', 'Wimo', 'AT&T'],
+        ['3320001002', 'Portabilidad Entrante', '09/10/2026', '09/10/2026', 'AT&T', 'Wimo'],
+        ['3320001001', 'Reversión', '09/10/2026', '09/10/2026', 'Wimo', 'Telcel'],
+        ['3320001005', 'Portabilidad Entrante', '29/02/2026', '02/03/2026', 'Telcel', 'Wimo'],
+        ['3320001006', 'Portabilidad Entrante', '10/10/2026', '11/10/2026', 'Wimo', 'Wimo'],
+        ['3320001007', 'Portabilidad Saliente', '12/10/2026', '13/10/2026', 'Wimo', 'Virgin Mobile']
+      ]
+    }
+  };
+
+  const lista = [usuarios, recargas, portabilidad];
+  return {
+    lista,
+    porId: Object.fromEntries(lista.map(p => [p.id, p])),
+    catalogos: { GEOGRAFIA, TIPO_ALUMNO, TIPO_CANAL, BOLSA, DENOMINACIONES, ESTATUS_RECARGA, TIPO_MOVIMIENTO, PROVEEDORES },
+    detectarRango
+  };
+});
+
+</script>
+<script>
+/*
+ * ValidaCarga — lector de plantillas oficiales.
+ * Abre la plantilla .xlsx que entrega el portal y deduce sus reglas:
+ *   - columnas (fila de encabezados) y obligatorias (marcadas con * u "obligatorio")
+ *   - listas desplegables: escritas en la celda, de un rango, de un nombre definido o de otra hoja
+ *   - listas dependientes (cascada) con INDIRECTO / INDIRECT
+ *   - números enteros/decimales, longitud de texto y fechas con rango
+ *   - valores únicos (validación personalizada con CONTAR.SI / COUNTIF)
+ * Después revisa la propia plantilla: si su fila de muestra no pasa sus reglas, lo reporta.
+ *
+ * Uso: Plantilla.leer(XLSX, datos, tipo) → modelo;  Plantilla.perfil(modelo, ajustes) → perfil para Validador.
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.Plantilla = factory();
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  // ------------------------------------------------------------------ utilidades
+  const ENT = { '&quot;': '"', '&amp;': '&', '&lt;': '<', '&gt;': '>', '&apos;': "'" };
+  const desXml = s => String(s).replace(/&(quot|amp|lt|gt|apos);/g, m => ENT[m]).replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n));
+  const norm = s => String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  const texto = v => v == null ? '' : String(v);
+
+  function utf8(bytes) {
+    if (typeof TextDecoder !== 'undefined') return new TextDecoder('utf-8').decode(bytes);
+    return Buffer.from(bytes).toString('utf8');
+  }
+
+  function archivoZip(XLSX, zip, ruta) {
+    const e = XLSX.CFB.find(zip, '/' + ruta.replace(/^\/+/, ''));
+    return e && e.content ? utf8(e.content) : '';
+  }
+
+  function attrs(s) {
+    const o = {};
+    String(s).replace(/([\w:]+)="([^"]*)"/g, (_, k, v) => { o[k.replace(/^.*:/, '')] = desXml(v); return ''; });
+    return o;
+  }
+
+  /** "Hoja!$A$1:$B$5" → { hoja, rango } (la hoja puede venir entre comillas simples). */
+  function partirRef(ref) {
+    const s = String(ref).replace(/^=/, '').trim();
+    const m = s.match(/^(?:'((?:[^']|'')+)'|([^!]+))!(.+)$/);
+    if (m) return { hoja: (m[1] || m[2]).replace(/''/g, "'"), rango: m[3].replace(/\$/g, '') };
+    return { hoja: null, rango: s.replace(/\$/g, '') };
+  }
+
+  function valoresDeRango(XLSX, wb, hoja, rango) {
+    const ws = wb.Sheets[hoja];
+    if (!ws || !/^[A-Z]{1,3}\d*(:[A-Z]{1,3}\d*)?$/i.test(rango)) return null;
+    let r;
+    try {
+      // Columnas completas ("A:A") se acotan al área usada de la hoja
+      const usado = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+      const [a, b] = rango.split(':');
+      const ini = XLSX.utils.decode_cell(/\d/.test(a) ? a : a + (usado.s.r + 1));
+      const fin = XLSX.utils.decode_cell(b ? (/\d/.test(b) ? b : b + (usado.e.r + 1)) : (/\d/.test(a) ? a : a + (usado.e.r + 1)));
+      r = { s: ini, e: { r: Math.min(fin.r, usado.e.r), c: fin.c } };
+    } catch (e) { return null; }
+    const vals = [];
+    for (let i = r.s.r; i <= r.e.r; i++) {
+      for (let j = r.s.c; j <= r.e.c; j++) {
+        const cel = ws[XLSX.utils.encode_cell({ r: i, c: j })];
+        if (cel && cel.v != null && texto(cel.v) !== '') vals.push(cel.w != null && cel.t === 'n' ? texto(cel.v) : texto(cel.v));
+      }
+    }
+    return vals;
+  }
+
+  function serialAFecha(XLSX, n) {
+    const p = XLSX.SSF.parse_date_code(+n);
+    return p ? new Date(Date.UTC(p.y, p.m - 1, p.d)) : null;
+  }
+
+  // ------------------------------------------------------------------ lectura
+  /**
+   * @param XLSX  la librería SheetJS
+   * @param datos ArrayBuffer/Uint8Array (navegador) o Buffer (Node)
+   * @param tipo  'array' (por defecto) o 'buffer'
+   */
+  /**
+   * Hoja que más probablemente es el formato: la primera visible que no parezca de instrucciones o catálogos.
+   */
+  function hojaPorDefecto(XLSX, wb) {
+    const meta = (wb.Workbook && wb.Workbook.Sheets) || [];
+    const visibles = wb.SheetNames.map((n, i) => ({ n, i })).filter(x => !meta[x.i] || !meta[x.i].Hidden);
+    const auxiliar = /instrucc|l[eé]eme|ayuda|indicac|cat[aá]logo|listas?$|readme|help/i;
+    // Tiene fila de encabezados: alguna de las 10 primeras filas con 2+ celdas con texto
+    const conEncabezados = nombre => {
+      const ws = wb.Sheets[nombre];
+      if (!ws || !ws['!ref']) return false;
+      const rg = XLSX.utils.decode_range(ws['!ref']);
+      for (let r = rg.s.r; r <= Math.min(rg.e.r, rg.s.r + 9); r++) {
+        let n = 0;
+        for (let c = rg.s.c; c <= rg.e.c; c++) { const x = ws[XLSX.utils.encode_cell({ r, c })]; if (x && String(x.v == null ? '' : x.v).trim()) n++; }
+        if (n >= 2) return true;
+      }
+      return false;
+    };
+    const orden = visibles.filter(x => !auxiliar.test(x.n)).concat(visibles.filter(x => auxiliar.test(x.n)));
+    const candidata = orden.find(x => conEncabezados(x.n)) || orden[0];
+    return candidata ? candidata.n : wb.SheetNames[0];
+  }
+
+  /** Lista de pestañas: [{ nombre, oculta }] */
+  function hojas(wb) {
+    const meta = (wb.Workbook && wb.Workbook.Sheets) || [];
+    return wb.SheetNames.map((n, i) => ({ nombre: n, oculta: !!(meta[i] && meta[i].Hidden) }));
+  }
+
+  function leer(XLSX, datos, tipo, opciones) {
+    tipo = tipo || 'array';
+    const wb = XLSX.read(datos, { type: tipo, cellNF: true });
+    let zip = null;
+    try { zip = XLSX.CFB.read(datos, { type: tipo }); } catch (e) { zip = null; }
+
+    // Hoja del formato: la primera visible
+    const pedida = opciones && opciones.hoja;
+    const nombreHoja = pedida && wb.SheetNames.includes(pedida) ? pedida : hojaPorDefecto(XLSX, wb);
+    const iHoja = wb.SheetNames.indexOf(nombreHoja);
+    const ws = wb.Sheets[nombreHoja];
+    if (!ws || !ws['!ref']) throw new Error(`La pestaña "${nombreHoja}" de la plantilla está vacía. Elige otra pestaña.`);
+
+    // Fila de encabezados: la primera (de las 10 primeras) con al menos 2 celdas con texto
+    const rg = XLSX.utils.decode_range(ws['!ref']);
+    const celda = (r, c) => { const x = ws[XLSX.utils.encode_cell({ r, c })]; return x && x.v != null ? texto(x.v) : ''; };
+    let filaEnc = -1;
+    for (let r = rg.s.r; r <= Math.min(rg.e.r, rg.s.r + 9) && filaEnc < 0; r++) {
+      let n = 0;
+      for (let c = rg.s.c; c <= rg.e.c; c++) if (celda(r, c).trim()) n++;
+      if (n >= 2) filaEnc = r;
+    }
+    if (filaEnc < 0) throw new Error(`No encontré la fila de encabezados en las primeras 10 filas de la pestaña "${nombreHoja}". Elige otra pestaña.`);
+
+    const columnas = [];
+    const porIndice = {};
+    for (let c = rg.s.c; c <= rg.e.c; c++) {
+      const h = celda(filaEnc, c);
+      if (!h.trim()) continue;
+      const col = {
+        nombre: h, indice: c, letra: XLSX.utils.encode_col(c),
+        marcadaObligatoria: /\*|\(obligatori[oa]\)|obligatori[oa]\b/i.test(h),
+        lista: null, dependiente: null, numero: null, largo: null, fecha: null, unico: false,
+        inferidas: [], noResueltas: []
+      };
+      columnas.push(col);
+      porIndice[c] = col;
+    }
+
+    // Filas de muestra que trae la propia plantilla
+    const muestra = [];
+    for (let r = filaEnc + 1; r <= rg.e.r && muestra.length < 50; r++) {
+      const fila = columnas.map(col => {
+        const x = ws[XLSX.utils.encode_cell({ r, c: col.indice })];
+        if (!x || x.v == null) return '';
+        if (x.t === 'n' && x.z && XLSX.SSF.is_date(x.z)) {
+          const p = XLSX.SSF.parse_date_code(x.v);
+          return `${String(p.d).padStart(2, '0')}/${String(p.m).padStart(2, '0')}/${p.y}`;
+        }
+        return texto(x.v);
+      });
+      if (fila.some(v => v.trim() !== '')) muestra.push({ fila: r + 1, celdas: fila });
+    }
+
+    // Nombres definidos (para listas y cascadas)
+    const nombres = {};
+    ((wb.Workbook && wb.Workbook.Names) || []).forEach(n => {
+      if (n && n.Name && n.Ref && !/^_xlnm\./i.test(n.Name)) nombres[norm(n.Name)] = { nombre: n.Name, ref: n.Ref };
+    });
+
+    const avisos = [];
+    const validacionesX14 = []; // formato moderno de Excel: se guardan para reescribirlas al agregar filas
+    const resolverRef = (ref, hojaPorDefecto) => {
+      const limpio = String(ref).replace(/^=/, '').trim();
+      const nd = nombres[norm(limpio)];
+      const destino = nd ? nd.ref : limpio;
+      const { hoja, rango } = partirRef(destino);
+      const vals = valoresDeRango(XLSX, wb, hoja || hojaPorDefecto, rango);
+      return vals ? { valores: vals, fuente: nd ? `nombre "${nd.nombre}"` : `${hoja || hojaPorDefecto}!${rango}` } : null;
+    };
+
+    // Validaciones de datos (clásicas y extendidas x14)
+    if (zip) {
+      const rutaHoja = rutaDeHoja(XLSX, zip, nombreHoja) || `xl/worksheets/sheet${iHoja + 1}.xml`;
+      const xml = archivoZip(XLSX, zip, rutaHoja);
+      const re = /<(x14:)?dataValidation\b([^>]*)>([\s\S]*?)<\/(?:x14:)?dataValidation>/g;
+      let m;
+      while ((m = re.exec(xml))) {
+        const a = attrs(m[2]);
+        const cuerpo = m[3];
+        const f1m = cuerpo.match(/<(?:x14:)?formula1>\s*(?:<xm:f>)?([\s\S]*?)(?:<\/xm:f>)?\s*<\/(?:x14:)?formula1>/);
+        const f2m = cuerpo.match(/<(?:x14:)?formula2>\s*(?:<xm:f>)?([\s\S]*?)(?:<\/xm:f>)?\s*<\/(?:x14:)?formula2>/);
+        const sqm = cuerpo.match(/<xm:sqref>([\s\S]*?)<\/xm:sqref>/);
+        const sqref = a.sqref || (sqm ? sqm[1] : '');
+        const f1 = f1m ? desXml(f1m[1]).trim() : '';
+        const f2 = f2m ? desXml(f2m[1]).trim() : '';
+        const tipoV = a.type || 'any';
+        if (m[1]) validacionesX14.push({ sqref, type: tipoV, operator: a.operator, f1, f2, allowBlank: a.allowBlank === '1' || a.allowBlank === 'true' });
+        columnasDeSqref(XLSX, sqref, filaEnc).forEach(ci => {
+          const col = porIndice[ci];
+          if (!col) return;
+          aplicarValidacion(XLSX, col, tipoV, a.operator || 'between', f1, f2, { resolverRef, hoja: nombreHoja, porIndice });
+        });
+      }
+    } else {
+      avisos.push('No pude abrir el interior de la plantilla; solo se usarán los encabezados.');
+    }
+
+    // Reglas inferidas por el nombre de la columna (solo si no hay una regla explícita)
+    columnas.forEach(col => {
+      const n = norm(col.nombre);
+      if (!col.lista && !col.dependiente) {
+        if (/correo|e-?mail/.test(n)) col.inferidas.push('correo');
+        else if (/(telefono|celular|movil|msisdn|numero de linea|\bdn\b)/.test(n)) col.inferidas.push('telefono');
+      }
+      if (!col.fecha && /fecha/.test(n)) col.inferidas.push('fecha');
+    });
+
+    const hayMarcas = columnas.some(c => c.marcadaObligatoria);
+    columnas.forEach(c => { c.obligatorio = hayMarcas ? c.marcadaObligatoria : true; });
+
+    const modelo = {
+      hoja: nombreHoja, hojas: hojas(wb), filaEncabezados: filaEnc + 1, columnas, muestra, avisos, validacionesX14,
+      obligatoriosPorMarca: hayMarcas,
+      listaDependiente: (nombreValor) => {
+        const candidatos = [nombreValor, nombreValor.replace(/ /g, '_'), nombreValor.replace(/[^\p{L}\p{N}_]/gu, '_'), nombreValor.replace(/[^\p{L}\p{N}]/gu, '')];
+        for (const k of candidatos) {
+          const nd = nombres[norm(k)];
+          if (nd) { const r = resolverRef(nd.nombre, nombreHoja); if (r) return r.valores; }
+        }
+        return null;
+      }
+    };
+    modelo.revision = revisar(modelo);
+    return modelo;
+  }
+
+  function rutaDeHoja(XLSX, zip, nombreHoja) {
+    const wbx = archivoZip(XLSX, zip, 'xl/workbook.xml');
+    const rels = archivoZip(XLSX, zip, 'xl/_rels/workbook.xml.rels');
+    let rid = null;
+    wbx.replace(/<sheet\b([^>]*)\/?>/g, (_, at) => { const a = attrs(at); if (a.name === nombreHoja) rid = a.id; return ''; });
+    if (!rid) return null;
+    let destino = null;
+    rels.replace(/<Relationship\b([^>]*)\/?>/g, (_, at) => { const a = attrs(at); if (a.Id === rid) destino = a.Target; return ''; });
+    if (!destino) return null;
+    return destino.startsWith('/') ? destino.slice(1) : 'xl/' + destino.replace(/^\.\//, '');
+  }
+
+  /** "D2:D500 F2" → índices de columna que aplican a filas de datos. */
+  function columnasDeSqref(XLSX, sqref, filaEnc) {
+    const cols = new Set();
+    String(sqref).split(/\s+/).filter(Boolean).forEach(parte => {
+      const [a, b] = parte.split(':');
+      const ca = a.match(/^([A-Z]{1,3})(\d*)$/i), cb = (b || a).match(/^([A-Z]{1,3})(\d*)$/i);
+      if (!ca || !cb) return;
+      const filaFin = cb[2] ? +cb[2] - 1 : Infinity;
+      if (filaFin <= filaEnc) return; // solo cubre encabezados
+      for (let c = XLSX.utils.decode_col(ca[1]); c <= XLSX.utils.decode_col(cb[1]); c++) cols.add(c);
+    });
+    return [...cols];
+  }
+
+  const num = s => { const n = parseFloat(String(s).replace(/^=/, '')); return isFinite(n) && /^=?-?\d+(\.\d+)?$/.test(String(s).trim()) ? n : null; };
+
+  function aplicarValidacion(XLSX, col, tipo, operador, f1, f2, ctx) {
+    const f1s = f1.replace(/^=/, '');
+    if (tipo === 'list') {
+      if (/^"[\s\S]*"$/.test(f1s)) {
+        col.lista = { valores: f1s.slice(1, -1).split(',').map(s => s.trim()).filter(Boolean), fuente: 'lista escrita en la validación' };
+      } else if (/^INDIRECT[O]?\s*\(/i.test(f1s)) {
+        const ref = f1s.match(/\$?([A-Z]{1,3})\$?\d+/i);
+        const padre = ref ? ctx.porIndice[XLSX.utils.decode_col(ref[1].toUpperCase())] : null;
+        if (padre && padre !== col) col.dependiente = { padre: padre.nombre, formula: f1s };
+        else col.noResueltas.push(`Lista dependiente no reconocida: ${f1s}`);
+      } else {
+        const r = ctx.resolverRef(f1s, ctx.hoja);
+        if (r) col.lista = { valores: r.valores, fuente: r.fuente };
+        else col.noResueltas.push(`Lista con origen no reconocido: ${f1s}`);
+      }
+    } else if (tipo === 'whole' || tipo === 'decimal' || tipo === 'textLength') {
+      const a = num(f1), b = num(f2);
+      if (a === null) { col.noResueltas.push(`Regla de ${tipo === 'textLength' ? 'longitud' : 'número'} con fórmula: ${f1}`); return; }
+      const regla = { operador, a, b };
+      if (tipo === 'textLength') col.largo = regla;
+      else col.numero = Object.assign({ entero: tipo === 'whole' }, regla);
+    } else if (tipo === 'date') {
+      const a = num(f1), b = num(f2);
+      if (a === null) { col.noResueltas.push(`Regla de fecha con fórmula: ${f1}`); col.fecha = { soloFormato: true }; return; }
+      col.fecha = { operador, a: serialAFecha(XLSX, a), b: b === null ? null : serialAFecha(XLSX, b) };
+    } else if (tipo === 'custom') {
+      if (/^(COUNTIF|CONTAR\.SI)\s*\(/i.test(f1s) && /[<=]=?\s*1\s*$/.test(f1s)) col.unico = true;
+      else col.noResueltas.push(`Validación personalizada: ${f1s}`);
+    }
+  }
+
+  // ------------------------------------------------------------------ perfil
+  function cumple(op, v, a, b) {
+    switch (op) {
+      case 'between': return v >= a && v <= b;
+      case 'notBetween': return v < a || v > b;
+      case 'equal': return v === a;
+      case 'notEqual': return v !== a;
+      case 'greaterThan': return v > a;
+      case 'lessThan': return v < a;
+      case 'greaterThanOrEqual': return v >= a;
+      case 'lessThanOrEqual': return v <= a;
+      default: return true;
+    }
+  }
+  function describir(op, a, b, f, exacto) {
+    f = f || (x => x);
+    return {
+      between: `entre ${f(a)} y ${f(b)}`, notBetween: `fuera del rango ${f(a)}–${f(b)}`, equal: exacto ? `exactamente ${f(a)}` : `igual a ${f(a)}`,
+      notEqual: `distinto de ${f(a)}`, greaterThan: `mayor que ${f(a)}`, lessThan: `menor que ${f(a)}`,
+      greaterThanOrEqual: `de ${f(a)} o más`, lessThanOrEqual: `de ${f(a)} o menos`
+    }[op] || '';
+  }
+  const etq = n => String(n).replace(/\s*\*+\s*$/, '').replace(/\s*\(obligatori[oa]\)\s*$/i, '');
+  const fmtFecha = d => d ? `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}/${d.getUTCFullYear()}` : '';
+
+  function revisarLista(api, columna, valor, opciones, contexto) {
+    const u = api.ctx.utiles;
+    if (u.vacio(valor)) return false;
+    const r = u.revisarCatalogo(valor, opciones);
+    if (r.ok) return true;
+    if (r.sugerencia) {
+      api.agregar(api.SEV.ERROR, columna,
+        `Se parece a "${r.sugerencia}", pero no es idéntico (acentos, mayúsculas o espacios). El portal compara texto exacto y rechaza la fila.`,
+        `Escribir exactamente "${r.sugerencia}".`);
+    } else {
+      api.agregar(api.SEV.ERROR, columna, `"${valor}" no está en la lista de la plantilla${contexto ? ' ' + contexto : ''}.`,
+        `Usar uno de: ${opciones.slice(0, 6).join(', ')}${opciones.length > 6 ? '…' : ''}.`);
+    }
+    return false;
+  }
+
+  /**
+   * Convierte el modelo en un perfil para Validador.validar.
+   * @param ajustes { obligatorios: { [nombreColumna]: boolean } } — cambios hechos por el usuario
+   */
+  function perfil(modelo, ajustes) {
+    const obl = (ajustes && ajustes.obligatorios) || {};
+    const cols = modelo.columnas;
+    return {
+      id: 'plantilla',
+      nombre: 'Según plantilla oficial',
+      destino: modelo.archivo || 'Plantilla',
+      columnas: cols.map(c => ({
+        nombre: c.nombre,
+        obligatorio: obl[c.nombre] !== undefined ? obl[c.nombre] : c.obligatorio,
+        catalogo: !!(c.lista || c.dependiente)
+      })),
+      validarFila(d, api) {
+        const { SEV, agregar, ctx } = api;
+        const u = ctx.utiles;
+        const validas = {};
+        cols.forEach(c => {
+          const v = d[c.nombre];
+          if (u.vacio(v)) return;
+          let ok = true;
+
+          if (c.lista) ok = revisarLista(api, c.nombre, v, c.lista.valores);
+
+          if (c.dependiente) {
+            const pv = d[c.dependiente.padre];
+            if (!u.vacio(pv) && validas[c.dependiente.padre] !== false) {
+              const opciones = modelo.listaDependiente(pv);
+              if (opciones) ok = revisarLista(api, c.nombre, v, opciones, `para ${etq(c.dependiente.padre)} "${pv}"`);
+              else agregar(SEV.ADVERTENCIA, c.nombre, `La plantilla no trae la lista de ${etq(c.nombre)} para ${etq(c.dependiente.padre)} "${pv}", así que no se pudo revisar.`,
+                'Confirmar el valor directamente en el portal.');
+            }
+          }
+
+          if (c.numero) {
+            const n = u.leerMonto(v);
+            const desc = `${c.numero.entero ? 'un número entero' : 'un número'} ${describir(c.numero.operador, c.numero.a, c.numero.b)}`;
+            if (!n || (c.numero.entero && !Number.isInteger(n.numero)) || !cumple(c.numero.operador, n.numero, c.numero.a, c.numero.b)) {
+              ok = false;
+              agregar(SEV.ERROR, c.nombre, `"${v}" no cumple la regla de la plantilla: debe ser ${desc}.`, `Capturar ${desc}.`);
+            }
+          }
+
+          if (c.largo) {
+            const L = v.trim().length;
+            if (!cumple(c.largo.operador, L, c.largo.a, c.largo.b)) {
+              ok = false;
+              agregar(SEV.ERROR, c.nombre, `Tiene ${L} caracteres; la plantilla pide ${describir(c.largo.operador, c.largo.a, c.largo.b, null, true)} caracteres.`, 'Ajustar la longitud del texto.');
+            }
+          }
+
+          if (c.fecha || c.inferidas.includes('fecha')) {
+            const f = u.leerFecha(v);
+            if (!f) {
+              ok = false;
+              agregar(c.fecha ? SEV.ERROR : SEV.ADVERTENCIA, c.nombre, `"${v}" no es una fecha válida${c.fecha ? '' : ' (la columna se llama "fecha")'}.`,
+                'Usar el formato DD/MM/AAAA con una fecha que exista.');
+            } else if (c.fecha && c.fecha.a && !cumple(c.fecha.operador, f.fecha.getTime(), c.fecha.a.getTime(), c.fecha.b && c.fecha.b.getTime())) {
+              ok = false;
+              agregar(SEV.ERROR, c.nombre, `La fecha ${f.texto} está fuera de lo que pide la plantilla: ${describir(c.fecha.operador, c.fecha.a, c.fecha.b, fmtFecha)}.`, 'Revisar la fecha.');
+            }
+          }
+
+          if (c.inferidas.includes('correo') && !/^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/.test(v.trim())) {
+            agregar(SEV.ADVERTENCIA, c.nombre, 'No parece un correo válido (revisión por el nombre de la columna).', 'Usar el formato nombre@dominio.com.');
+          }
+          if (c.inferidas.includes('telefono') && !/^\d{10}$/.test(v.trim())) {
+            agregar(SEV.ADVERTENCIA, c.nombre, 'No parece un número de 10 dígitos (revisión por el nombre de la columna).', 'Capturar 10 dígitos, sin espacios ni lada internacional.');
+          }
+
+          if (c.unico) {
+            const vis = ctx.vistos.unico = ctx.vistos.unico || {};
+            const k = c.nombre + '|' + v.trim().toUpperCase();
+            if (vis[k]) {
+              ok = false;
+              agregar(SEV.ERROR, c.nombre, `Valor repetido: ya aparece en la fila ${vis[k]}. La plantilla exige valores únicos en esta columna.`, 'Dejar una sola fila con este valor.');
+            } else vis[k] = api.fila;
+          }
+          validas[c.nombre] = ok;
+        });
+      }
+    };
+  }
+
+  // ------------------------------------------------------------------ revisión de la propia plantilla
+  function revisar(modelo) {
+    const hallazgos = [];
+    modelo.columnas.forEach(c => {
+      if (c.lista) {
+        const conEspacios = c.lista.valores.filter(v => v !== v.trim());
+        if (conEspacios.length) hallazgos.push({ severidad: 'advertencia', columna: c.nombre,
+          motivo: `La lista de la plantilla tiene opciones con espacios sobrantes (${conEspacios.map(v => `"${v}"`).join(', ')}).`,
+          correccion: 'Si el portal compara contra la versión sin espacios, estas opciones nunca van a pasar. Reportarlo al dueño del portal.' });
+        const vistos = new Set(), rep = new Set();
+        c.lista.valores.forEach(v => { (vistos.has(v) ? rep : vistos).add(v); });
+        if (rep.size) hallazgos.push({ severidad: 'advertencia', columna: c.nombre, motivo: `La lista tiene opciones repetidas: ${[...rep].join(', ')}.`, correccion: 'Sin impacto en la carga, pero indica un catálogo descuidado.' });
+      }
+      if (c.dependiente) {
+        const padre = modelo.columnas.find(p => p.nombre === c.dependiente.padre);
+        if (padre && padre.lista) {
+          const sinLista = padre.lista.valores.filter(v => !modelo.listaDependiente(v));
+          if (sinLista.length) hallazgos.push({ severidad: 'advertencia', columna: c.nombre,
+            motivo: `No hay lista de ${etq(c.nombre)} para: ${sinLista.slice(0, 5).join(', ')}${sinLista.length > 5 ? '…' : ''}.`,
+            correccion: `Quien elija esas opciones de ${etq(padre.nombre)} no podrá llenar ${etq(c.nombre)}.` });
+        }
+      }
+      c.noResueltas.forEach(t => hallazgos.push({ severidad: 'advertencia', columna: c.nombre, motivo: `${t}. ValidaCarga no puede revisar esta regla.`, correccion: 'Revisarla a mano.' }));
+    });
+    return hallazgos;
+  }
+
+  return { leer, perfil, hojas, etiqueta: etq };
+});
+
+</script>
+<script>
+/* Plantilla oficial de demostración (ficticia) embebida para que la página abra con un ejemplo funcionando.
+   Original en ejemplos/plantilla_oficial_demo.xlsx */
+(function (root) {
+  root.DemoPlantilla = {
+    nombre: "plantilla_oficial_demo.xlsx",
+    base64: "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",
+    datos: {
+      nombre: "datos_alta_usuarios_demo.xlsx",
+      filas: [["Usuario*", "Nombre*", "Apellido Paterno*", "Correo*", "Región*", "Estado*", "Tipo de Alumno*", "Tipo de Canal*", "Teléfono"], ["GDLDEMO01", "Mariana", "Ochoa", "mochoa@distribuidora-demo.mx", "Región 5", "Jalisco", "Distribuidor", "Detalle de Canal", "3311110001"], ["GDLDEMO02", "Luis", "Ibarra", "libarra@distribuidora-demo.mx", "Región 5", "Colima", "Empleado", "Masivo", "3311110002"], ["GDLDEMO03", "Karla", "Méndez", "kmendez@distribuidora-demo.mx", "Region 5", "Jalisco", "Distribuidor", "Detalle de canal", "3311110003"], ["MZODEMO01", "Óscar", "Valdivia", "ovaldivia@distribuidora-demo.mx", "Región 5", "Colima ", "Distribuidor", "Detalle de Canal", "3311110004"], ["CDMDEMO01", "Brenda", "Cárdenas", "bcardenas@distribuidora-demo.mx", "Región 9", "Jalisco", "Empleado", "Cadenas Comerciales", "5511110005"], ["GDLDEMO01", "Paola", "Rentería", "prenteria@distribuidora-demo.mx", "Región 5", "Nayarit", "Externo", "Masivo", "3311110006"], ["TPC", "Jorge", "Partida", "jpartida@distribuidora-demo", "Región 5", "Nayarit", "Vendedor", "Detalle de Canal", "331111"], ["MLMDEMO01", "", "Zavala", "czavala@distribuidora-demo.mx", "Región 4", "Michoacán", "Externo", "Masivo", "4431110008"], ["CDMDEMO02", "Ana Sofía", "Lugo", "alugo@distribuidora-demo.mx", "Región 9", "Estado de México", "Empleado", "Cadenas Comerciales", "5511110009"]]
+    }
+  };
+})(typeof globalThis !== "undefined" ? globalThis : self);
+
+</script>
+<script>
+/* ValidaCarga — interfaz. Lee la plantilla y el archivo en el navegador, llama al motor y pinta resultados. */
+(function () {
+  'use strict';
+
+  const MAX_FILAS_TABLA = 500;
+  const $ = sel => document.querySelector(sel);
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  const estado = {
+    modo: 'plantilla',      // 'plantilla' | 'ejemplos'
+    perfilId: 'usuarios',   // perfil de ejemplo elegido
+    plantilla: null,        // { nombre, modelo, esDemo }
+    obligatorios: {},       // ajustes del usuario sobre la plantilla
+    archivo: null,          // { nombre, tipo, crudas, esMuestra }
+    preparado: null,        // { encabezados, filas, primeraFila }
+    resultado: null,
+    revisionMuestra: null,  // resultado de validar la fila de muestra de la plantilla
+    filtro: 'todas',
+    mensaje: '',
+    mensajeError: false
+  };
+
+  // ---------------------------------------------------------------- Perfil vigente
+  function perfilActual() {
+    if (estado.modo === 'ejemplos') return Perfiles.porId[estado.perfilId];
+    if (!estado.plantilla || !estado.plantilla.modelo) return null;
+    return Plantilla.perfil(estado.plantilla.modelo, { obligatorios: estado.obligatorios });
+  }
+
+  // ---------------------------------------------------------------- Lectura de archivos
+  const pad = n => String(n).padStart(2, '0');
+
+  function hojaAFilas(ws) {
+    if (!ws || !ws['!ref']) return [];
+    const rg = XLSX.utils.decode_range(ws['!ref']);
+    const filas = [];
+    for (let r = rg.s.r; r <= rg.e.r; r++) {
+      const fila = [];
+      for (let c = rg.s.c; c <= rg.e.c; c++) fila.push(valorCelda(ws[XLSX.utils.encode_cell({ r, c })]));
+      filas.push(fila);
+    }
+    return filas;
+  }
+
+  function valorCelda(cel) {
+    if (!cel || cel.v == null) return '';
+    if (cel.t === 'd' && cel.v instanceof Date) return `${pad(cel.v.getDate())}/${pad(cel.v.getMonth() + 1)}/${cel.v.getFullYear()}`;
+    if (cel.t === 'n' && cel.z && XLSX.SSF.is_date(cel.z)) {
+      const p = XLSX.SSF.parse_date_code(cel.v);
+      return `${pad(p.d)}/${pad(p.m)}/${p.y}`;
+    }
+    if (cel.t === 'b') return cel.v ? 'VERDADERO' : 'FALSO';
+    return String(cel.v);
+  }
+
+  function extension(nombre) { return (nombre.split('.').pop() || '').toLowerCase(); }
+
+  async function leerArchivo(file) {
+    const ext = extension(file.name);
+    if (!['xlsx', 'xls', 'csv'].includes(ext)) throw new Error(`"${file.name}" no es un Excel ni un CSV. Usa un archivo .xlsx, .xls o .csv.`);
+    let libro;
+    if (ext === 'csv') {
+      const texto = await file.text();
+      libro = XLSX.read(texto.replace(/^﻿/, ''), { type: 'string', raw: true });
+    } else {
+      libro = XLSX.read(await file.arrayBuffer(), { type: 'array', cellNF: true });
+    }
+    const meta = (libro.Workbook && libro.Workbook.Sheets) || [];
+    const pestanas = libro.SheetNames.map((n, i) => ({ nombre: n, oculta: !!(meta[i] && meta[i].Hidden), crudas: hojaAFilas(libro.Sheets[n]) }));
+    if (!pestanas.some(h => tieneDatos(h.crudas))) throw new Error(`"${file.name}" está vacío.`);
+    return { nombre: file.name, tipo: ext === 'csv' ? 'csv' : 'xlsx', pestanas, hoja: 0, hojaManual: false, crudas: [], esMuestra: false };
+  }
+
+  const tieneDatos = filas => filas.some(f => f.some(v => String(v).trim() !== ''));
+
+  /** Cuántos encabezados esperados aparecen en la mejor fila de las 10 primeras. */
+  function puntaje(filas, esperados) {
+    if (!esperados || !esperados.length) return 0;
+    const claves = new Set(esperados.map(Validador.clave));
+    let mejor = 0;
+    for (let i = 0; i < Math.min(filas.length, 10); i++) {
+      mejor = Math.max(mejor, (filas[i] || []).filter(h => claves.has(Validador.clave(h))).length);
+    }
+    return mejor;
+  }
+
+  /** Elige la pestaña cuyos encabezados más se parecen a lo que espera el perfil; si empatan, la primera visible con datos. */
+  function elegirPestana(archivo, perfil) {
+    if (!archivo.pestanas) return;
+    if (!archivo.hojaManual) {
+      const esperados = perfil ? perfil.columnas.map(c => c.nombre) : null;
+      let mejor = -1, puntos = -1;
+      archivo.pestanas.forEach((h, i) => {
+        if (!tieneDatos(h.crudas)) return;
+        const p = puntaje(h.crudas, esperados) + (h.oculta ? -0.5 : 0);
+        if (p > puntos) { puntos = p; mejor = i; }
+      });
+      archivo.hoja = mejor < 0 ? 0 : mejor;
+    }
+    archivo.crudas = archivo.pestanas[archivo.hoja].crudas;
+  }
+
+  function opcionesPestanas(lista, actual) {
+    return lista.map((h, i) => `<option value="${i}" ${i === actual ? 'selected' : ''}>${i + 1} · ${esc(h.nombre)}${h.oculta ? ' (oculta)' : ''}</option>`).join('');
+  }
+
+  /** Ubica la fila de encabezados del archivo según lo que espera el perfil vigente. */
+  function preparar(archivo, perfil) {
+    const esperados = perfil ? perfil.columnas.map(c => c.nombre) : null;
+    const i = Validador.buscarEncabezados(archivo.crudas, esperados);
+    const encabezados = (archivo.crudas[i] || []).slice();
+    while (encabezados.length && String(encabezados[encabezados.length - 1]).trim() === '') encabezados.pop();
+    return {
+      encabezados,
+      filas: archivo.crudas.slice(i + 1).map(f => f.slice(0, encabezados.length)),
+      primeraFila: i + 2,
+      filaEncabezados: i + 1
+    };
+  }
+
+  // ---------------------------------------------------------------- Plantilla
+  function base64ABytes(b64) {
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return bytes;
+  }
+
+  /** Lee la plantilla (en la pestaña pedida o la más probable). Si esa pestaña no sirve, deja elegir otra. */
+  function usarPlantilla(nombre, bytes, esDemo, hoja) {
+    estado.obligatorios = {};
+    estado.revisionMuestra = null;
+    try {
+      const modelo = Plantilla.leer(XLSX, bytes, 'array', { hoja });
+      modelo.archivo = nombre;
+      estado.plantilla = { nombre, bytes, esDemo, modelo, hojas: modelo.hojas, hoja: modelo.hoja, error: '' };
+      revisarMuestraPlantilla();
+    } catch (err) {
+      const hojas = Plantilla.hojas(XLSX.read(bytes, { type: 'array' }));
+      if (hojas.length < 2) throw err;
+      estado.plantilla = { nombre, bytes, esDemo, modelo: null, hojas, hoja: hoja || null, error: err.message };
+    }
+  }
+
+  async function recibirPlantilla(file) {
+    if (!file) return;
+    try {
+      if (extension(file.name) !== 'xlsx') {
+        throw new Error(`La plantilla debe ser .xlsx (recibí "${file.name}"). Si el portal la entrega en otro formato, ábrela en Excel y guárdala como .xlsx.`);
+      }
+      usarPlantilla(file.name, new Uint8Array(await file.arrayBuffer()), false);
+      estado.mensaje = ''; estado.mensajeError = false;
+      validarActual();
+    } catch (err) {
+      estado.mensaje = err.message || 'No se pudo leer la plantilla.';
+      estado.mensajeError = true;
+      pintarTodo();
+    }
+  }
+
+  /** Valida la fila de muestra que trae la propia plantilla (así se detectó el bug real). */
+  function revisarMuestraPlantilla() {
+    if (!estado.plantilla || !estado.plantilla.modelo) { estado.revisionMuestra = null; return; }
+    const m = estado.plantilla.modelo;
+    const perfil = Plantilla.perfil(m, { obligatorios: estado.obligatorios });
+    // Con más de 5 filas ya no es una muestra: es un archivo que acumula información
+    estado.revisionMuestra = m.muestra.length && m.muestra.length <= 5
+      ? Validador.validar(perfil, m.columnas.map(c => c.nombre), m.muestra.map(x => x.celdas), { primeraFila: m.muestra[0].fila })
+      : null;
+  }
+
+  const esAcumulado = () => !!(estado.plantilla && estado.plantilla.modelo && estado.plantilla.modelo.muestra.length > 5);
+
+  function cargarDemo() {
+    usarPlantilla(DemoPlantilla.nombre, base64ABytes(DemoPlantilla.base64), true);
+    estado.archivo = { nombre: DemoPlantilla.datos.nombre, tipo: 'xlsx', crudas: DemoPlantilla.datos.filas.map(f => f.slice()), esMuestra: true };
+    estado.archivo.pestanas = [{ nombre: 'Formato', oculta: false, crudas: estado.archivo.crudas }]; estado.archivo.hoja = 0;
+    estado.mensaje = ''; estado.mensajeError = false; estado.filtro = 'todas';
+    validarActual();
+  }
+
+  function quitarPlantilla() {
+    estado.plantilla = null;
+    estado.obligatorios = {};
+    estado.revisionMuestra = null;
+    estado.resultado = null;
+    if (estado.archivo && estado.archivo.esMuestra) estado.archivo = null;
+    estado.mensaje = ''; estado.mensajeError = false;
+    $('#input-plantilla').value = '';
+    pintarTodo();
+  }
+
+  // ---------------------------------------------------------------- Archivo de datos
+  async function recibirArchivo(file) {
+    if (!file) return;
+    try {
+      estado.archivo = await leerArchivo(file);
+      estado.mensaje = '';
+      estado.mensajeError = false;
+      estado.filtro = 'todas';
+      validarActual();
+    } catch (err) {
+      estado.mensaje = err.message || 'No se pudo leer el archivo.';
+      estado.mensajeError = true;
+      pintarTodo();
+    }
+  }
+
+  function cargarMuestraEjemplo() {
+    const m = Perfiles.porId[estado.perfilId].muestra;
+    estado.archivo = { nombre: m.archivo, tipo: 'xlsx', crudas: [m.encabezados.slice()].concat(m.filas.map(f => f.slice())), esMuestra: true };
+    estado.archivo.pestanas = [{ nombre: 'Datos', oculta: false, crudas: estado.archivo.crudas }]; estado.archivo.hoja = 0;
+    estado.mensaje = ''; estado.mensajeError = false; estado.filtro = 'todas';
+    validarActual();
+  }
+
+  function validarActual() {
+    const perfil = perfilActual();
+    estado.resultado = null;
+    estado.preparado = null;
+    if (estado.archivo) elegirPestana(estado.archivo, perfil);
+    if (perfil && estado.archivo) {
+      estado.preparado = preparar(estado.archivo, perfil);
+      estado.resultado = Validador.validar(perfil, estado.preparado.encabezados, estado.preparado.filas, { primeraFila: estado.preparado.primeraFila });
+    }
+    pintarTodo();
+  }
+
+  /** Empieza de cero: borra plantilla, reglas detectadas, ajustes, archivo y resultados. */
+  function limpiar() {
+    estado.plantilla = null;
+    estado.obligatorios = {};
+    estado.revisionMuestra = null;
+    estado.archivo = null;
+    estado.preparado = null;
+    estado.resultado = null;
+    estado.filtro = 'todas';
+    estado.mensaje = ''; estado.mensajeError = false;
+    $('#input-archivo').value = '';
+    $('#input-plantilla').value = '';
+    pintarTodo();
+    (estado.modo === 'plantilla' ? $('#zona-plantilla') : $('#zona')).focus();
+  }
+
+  // ---------------------------------------------------------------- Pintado: panel izquierdo
+  function pintarTodo() {
+    pintarModo();
+    pintarPlantilla();
+    pintarArchivo();
+    pintarResultados();
+  }
+
+  function pintarModo() {
+    document.querySelectorAll('[data-modo]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.modo === estado.modo)));
+    $('#panel-plantilla').hidden = estado.modo !== 'plantilla';
+    $('#panel-ejemplos').hidden = estado.modo !== 'ejemplos';
+    $('#btn-plantilla').hidden = estado.modo !== 'ejemplos';
+    $('#btn-muestra').textContent = estado.modo === 'plantilla' ? 'Probar con la plantilla de ejemplo' : 'Probar con archivo de ejemplo';
+  }
+
+  function pintarPerfiles() {
+    $('#perfiles').innerHTML = Perfiles.lista.map(p => `
+      <label class="perfil" data-testid="perfil-${p.id}">
+        <input type="radio" name="perfil" value="${p.id}" id="perfil-${p.id}" ${p.id === estado.perfilId ? 'checked' : ''}>
+        <strong>${esc(p.nombre)}</strong>
+        <span class="destino">${esc(p.destino)}</span>
+        <span class="detalle">${esc(p.descripcion)}
+          <span class="origen"><b>Bug real:</b> ${esc(p.origen)}</span>
+        </span>
+      </label>`).join('');
+  }
+
+  function chips(c) {
+    const out = [];
+    const et = Plantilla.etiqueta;
+    if (c.lista) out.push(`<span class="chip" title="${esc(c.lista.valores.join(' · '))}">Lista · ${c.lista.valores.length}</span>`);
+    if (c.dependiente) out.push(`<span class="chip">Depende de ${esc(et(c.dependiente.padre))}</span>`);
+    if (c.numero) out.push(`<span class="chip">${c.numero.entero ? 'Entero' : 'Número'}${c.numero.operador === 'between' ? ` ${c.numero.a}–${c.numero.b}` : ''}</span>`);
+    if (c.largo) out.push(`<span class="chip">${c.largo.operador === 'between' ? `${c.largo.a}–${c.largo.b}` : c.largo.a} caracteres</span>`);
+    if (c.fecha) out.push('<span class="chip">Fecha</span>');
+    if (c.unico) out.push('<span class="chip">Sin repetidos</span>');
+    c.inferidas.forEach(t => out.push(`<span class="chip tenue" title="Deducida por el nombre de la columna">${{ correo: 'Correo', telefono: '10 dígitos', fecha: 'Fecha' }[t]}?</span>`));
+    if (c.noResueltas.length) out.push(`<span class="chip aviso-chip" title="${esc(c.noResueltas.join(' / '))}">Regla no reconocida</span>`);
+    return out.join('') || '<span class="chip tenue">Texto libre</span>';
+  }
+
+  function pintarPlantilla() {
+    const caja = $('#plantilla-actual');
+    const p = estado.plantilla;
+    $('#zona-plantilla').hidden = !!p;
+    if (!p) { caja.innerHTML = ''; return; }
+    const m = p.modelo;
+    const perfil = m ? Plantilla.perfil(m, { obligatorios: estado.obligatorios }) : null; // siempre el de la plantilla, aunque se esté viendo Ejemplos
+    const iHoja = p.hojas.findIndex(h => h.nombre === p.hoja);
+    const selector = p.hojas.length > 1 ? `
+      <label class="selector-hoja">
+        <span>Pestaña con el formato</span>
+        <select id="sel-hoja-plantilla" data-testid="sel-hoja-plantilla">
+          ${iHoja < 0 ? '<option value="" selected disabled>Elige una pestaña</option>' : ''}${opcionesPestanas(p.hojas, iHoja)}
+        </select>
+      </label>` : '';
+    const cabeza = `
+      <div class="plantilla-cabeza">
+        <div class="min0">
+          ${p.esDemo ? '<span class="chip-muestra">Ejemplo</span> ' : ''}<span class="mono" data-testid="nombre-plantilla">${esc(p.nombre)}</span>
+          ${m ? `<div class="sub">Encabezados en la fila ${m.filaEncabezados} · ${m.columnas.length} columnas</div>` : ''}
+        </div>
+        <button type="button" class="enlace" id="btn-quitar-plantilla" data-testid="btn-quitar-plantilla">Cambiar</button>
+      </div>${selector}`;
+    const conectar = () => {
+      $('#btn-quitar-plantilla').addEventListener('click', quitarPlantilla);
+      const sel = $('#sel-hoja-plantilla');
+      if (sel) sel.addEventListener('change', () => {
+        usarPlantilla(p.nombre, p.bytes, p.esDemo, p.hojas[+sel.value].nombre);
+        if (estado.archivo) estado.archivo.hojaManual = false;
+        validarActual();
+      });
+    };
+    if (!m) {
+      caja.innerHTML = cabeza + `<div class="aviso err" data-testid="error-plantilla">${esc(p.error)}</div>`;
+      conectar();
+      return;
+    }
+    caja.innerHTML = cabeza + `
+      <div class="reglas" data-testid="reglas-detectadas">
+        <div class="reglas-titulo">
+          <span>Reglas detectadas</span>
+          <span class="sub">${m.obligatoriosPorMarca ? 'Obligatorias: las marcadas con *' : 'Sin marcas de obligatorio: se tomaron todas'}</span>
+        </div>
+        ${m.columnas.map((c, i) => `
+          <div class="regla" data-testid="regla-${i}">
+            <label class="regla-col">
+              <input type="checkbox" data-obl="${esc(c.nombre)}" data-testid="obl-${i}" ${perfil.columnas[i].obligatorio ? 'checked' : ''}>
+              <span title="Marcar si la columna es obligatoria">${esc(c.nombre)}</span>
+            </label>
+            <div class="chips">${chips(c)}</div>
+          </div>`).join('')}
+      </div>`;
+    conectar();
+    caja.querySelectorAll('[data-obl]').forEach(chk => chk.addEventListener('change', () => {
+      estado.obligatorios[chk.dataset.obl] = chk.checked;
+      revisarMuestraPlantilla();
+      validarActual();
+    }));
+  }
+
+  function pintarArchivo() {
+    const a = estado.archivo;
+    const bloqueado = estado.modo === 'plantilla' && !estado.plantilla;
+    $('#zona').classList.toggle('bloqueada', bloqueado);
+    $('#input-archivo').disabled = bloqueado;
+    $('#zona-texto').textContent = bloqueado ? 'Primero sube la plantilla oficial' : 'Arrastra tu Excel o CSV aquí';
+    const varias = a && a.pestanas && a.pestanas.length > 1;
+    $('#archivo-actual').innerHTML = a
+      ? `<div class="archivo-nombre">${a.esMuestra ? '<span class="chip-muestra">Ejemplo</span>' : ''}<span class="mono" data-testid="nombre-archivo">${esc(a.nombre)}</span></div>
+         ${varias ? `<label class="selector-hoja">
+           <span>Pestaña a revisar${a.hojaManual ? '' : ' <em>(elegida por sus encabezados)</em>'}</span>
+           <select id="sel-hoja-archivo" data-testid="sel-hoja-archivo">${opcionesPestanas(a.pestanas, a.hoja)}</select>
+         </label>` : ''}`
+      : '';
+    const sel = $('#sel-hoja-archivo');
+    if (sel) sel.addEventListener('change', () => {
+      a.hoja = +sel.value; a.hojaManual = true; estado.filtro = 'todas';
+      validarActual();
+    });
+    $('#btn-limpiar').disabled = !a && !estado.mensaje && !estado.plantilla;
+  }
+
+  // ---------------------------------------------------------------- Pintado: resultados
+  function bloqueRevisionPlantilla() {
+    if (estado.modo !== 'plantilla' || !estado.plantilla || !estado.plantilla.modelo) return '';
+    const m = estado.plantilla.modelo;
+    const items = [];
+    const rm = estado.revisionMuestra;
+    if (esAcumulado()) items.push(`<li><b>Esta plantilla ya trae datos</b> (${m.muestra.length >= 50 ? 'más de 50' : m.muestra.length} filas): se toma como archivo acumulado. Con "Agregar a mi archivo" las filas nuevas se escriben debajo de la última.</li>`);
+    if (rm && !rm.fatal) {
+      rm.filas.filter(f => f.estado === 'error').forEach(f => {
+        f.incidencias.filter(i => i.severidad === 'error').forEach(i => items.push(
+          `<li><b>La fila de muestra ${f.fila} de la propia plantilla no pasa sus reglas</b> en ${esc(Plantilla.etiqueta(i.columna))}: ${esc(i.motivo)} <span class="como">Si copias la muestra tal cual, el portal la va a rechazar.</span></li>`));
+      });
+    }
+    m.revision.forEach(h => items.push(`<li><b>${esc(Plantilla.etiqueta(h.columna))}:</b> ${esc(h.motivo)} <span class="como">${esc(h.correccion)}</span></li>`));
+    m.avisos.forEach(a => items.push(`<li>${esc(a)}</li>`));
+    if (!items.length) return `<div class="aviso ok" data-testid="revision-plantilla">La plantilla oficial no tiene inconsistencias propias.</div>`;
+    return `<details class="aviso warn" data-testid="revision-plantilla" open>
+      <summary><strong>Revisión de la plantilla oficial · ${items.length} ${items.length === 1 ? 'hallazgo' : 'hallazgos'}</strong></summary>
+      <ul>${items.join('')}</ul></details>`;
+  }
+
+  function pintarResultados() {
+    const cont = $('#resultados');
+    const r = estado.resultado;
+    const perfil = perfilActual();
+    const msg = estado.mensaje
+      ? `<div class="aviso ${estado.mensajeError ? 'err' : 'warn'}" data-testid="mensaje">${esc(estado.mensaje)}</div>` : '';
+    const revision = bloqueRevisionPlantilla();
+
+    if (!perfil) {
+      cont.innerHTML = msg + `<div class="vacio-tabla" data-testid="estado-vacio">
+        <strong>Sube la plantilla oficial del portal.</strong><br>
+        Es el Excel que el portal te da para llenar. ValidaCarga lee de ahí las columnas y las listas desplegables, y con eso revisa tu archivo.
+        Tu información no sale de esta computadora.</div>`;
+      return;
+    }
+    if (!r || estado.mensajeError) {
+      cont.innerHTML = `<div class="titulo-res"><h2>${esc(perfil.nombre)}</h2></div>` + msg + revision +
+        `<div class="vacio-tabla" data-testid="estado-vacio"><strong>Listo para un archivo nuevo.</strong><br>Sube tu Excel o CSV para revisarlo${estado.modo === 'plantilla' ? ' contra la plantilla' : `: ${esc(perfil.nombre)}`}.</div>`;
+      return;
+    }
+
+    const s = r.resumen;
+    const pct = n => s.total ? (n / s.total * 100).toFixed(2) : 0;
+    const errArchivo = r.archivo.filter(i => i.severidad === 'error');
+    const warnArchivo = r.archivo.filter(i => i.severidad !== 'error');
+    const avisoArchivo = (lista, clase, titulo) => lista.length ? `
+      <div class="aviso ${clase}" data-testid="aviso-archivo-${clase}">
+        <strong>${titulo}</strong>
+        <ul>${lista.map(i => `<li>${esc(i.motivo)} <span class="como">${esc(i.correccion)}</span></li>`).join('')}</ul>
+      </div>` : '';
+    const filtros = [['todas', 'Todas', s.total], ['error', 'Con error', s.error], ['advertencia', 'Con advertencia', s.advertencia], ['correcto', 'Correctas', s.correcto]];
+    const pre = estado.preparado;
+
+    cont.innerHTML = `
+      <div class="titulo-res">
+        <h2>${esc(perfil.nombre)}</h2>
+        <p>${estado.archivo.pestanas && estado.archivo.pestanas.length > 1 ? `Pestaña "${esc(estado.archivo.pestanas[estado.archivo.hoja].nombre)}" · ` : ''}${s.total.toLocaleString('es-MX')} filas revisadas${pre.filaEncabezados > 1 ? ` · encabezados en la fila ${pre.filaEncabezados}` : ''}</p>
+      </div>
+      ${msg}${revision}
+      ${avisoArchivo(errArchivo, 'err', 'Faltan columnas obligatorias. Se revisaron solo las columnas que sí trae tu archivo; descarga el archivo marcado para ver en rojo lo que falta.')}
+      ${avisoArchivo(warnArchivo, 'warn', 'Observaciones en los encabezados')}
+      ${`
+      <div class="marcador" data-testid="resumen">
+        <div class="cifra"><b data-testid="resumen-total">${s.total}</b><span>Filas</span></div>
+        <div class="cifra ok"><b data-testid="resumen-correcto">${s.correcto}</b><span>Correctas</span></div>
+        <div class="cifra warn"><b data-testid="resumen-advertencia">${s.advertencia}</b><span>Con advertencia</span></div>
+        <div class="cifra err"><b data-testid="resumen-error">${s.error}</b><span>Con error</span></div>
+      </div>
+      <div class="barra" role="img" aria-label="${s.correcto} correctas, ${s.advertencia} con advertencia, ${s.error} con error">
+        <i style="width:${pct(s.correcto)}%;background:var(--ok)"></i><i style="width:${pct(s.advertencia)}%;background:var(--warn)"></i><i style="width:${pct(s.error)}%;background:var(--err)"></i>
+      </div>
+      <div class="descargas">
+        <button class="boton principal" type="button" id="btn-reporte" data-testid="btn-descargar-reporte">Descargar reporte de errores</button>
+        ${estado.modo === 'plantilla'
+          ? `<button class="boton" type="button" id="btn-marcado" data-testid="btn-descargar-base" title="Tu plantilla o archivo acumulado con las filas nuevas abajo: lo que pasó queda normal y lo que falló en rojo con nota. La revisión va en pestañas nuevas.">Agregar a mi archivo</button>`
+          : `<button class="boton" type="button" id="btn-marcado" data-testid="btn-descargar-marcado" title="Excel con las columnas del formato, los errores en rojo y una nota con el motivo">Descargar archivo marcado</button>`}
+        <button class="boton" type="button" id="btn-validas" data-testid="btn-descargar-validas" ${s.validas && !r.fatal ? '' : 'disabled'} ${r.fatal ? 'title="No disponible: faltan columnas obligatorias"' : ''}>Descargar filas válidas (${r.fatal ? 0 : s.validas})</button>
+      </div>
+      <div class="estado-msg" id="estado-descarga" data-testid="estado-descarga" role="status"></div>
+      <div class="filtros" role="group" aria-label="Filtrar filas">
+        ${filtros.map(([id, txt, n]) => `<button type="button" class="filtro" data-filtro="${id}" data-testid="filtro-${id}" aria-pressed="${estado.filtro === id}">${txt}<span class="n">${n}</span></button>`).join('')}
+      </div>
+      ${tabla(r)}`}
+    `;
+    cont.querySelectorAll('.filtro').forEach(b => b.addEventListener('click', () => { estado.filtro = b.dataset.filtro; pintarResultados(); }));
+    const br = $('#btn-reporte'); if (br) br.addEventListener('click', descargarReporte);
+    const bv = $('#btn-validas'); if (bv) bv.addEventListener('click', descargarValidas);
+    const bm = $('#btn-marcado'); if (bm) bm.addEventListener('click', descargarMarcado);
+  }
+
+  function tabla(r) {
+    const filas = r.filas.filter(f => estado.filtro === 'todas' || f.estado === estado.filtro);
+    if (!filas.length) return '<div class="tabla-caja"><p class="vacio-tabla">No hay filas en esta vista.</p></div>';
+    const visibles = filas.slice(0, MAX_FILAS_TABLA);
+    const etiqueta = { correcto: 'Correcta', advertencia: 'Advertencia', error: 'Error' };
+    const cuerpo = visibles.map(f => {
+      const inc = f.incidencias.length ? f.incidencias : [null];
+      return `<tbody class="grupo" data-testid="fila-${f.fila}" data-fila="${f.fila}" data-estado="${f.estado}">` + inc.map((i, k) => `
+        <tr>
+          ${k === 0 ? `<td class="num" rowspan="${inc.length}">${f.fila}</td><td rowspan="${inc.length}"><span class="estado ${f.estado}">${etiqueta[f.estado]}</span></td>` : ''}
+          ${i ? `
+            <td class="col">${esc(i.columna)}<br><span class="sev ${i.severidad}">${i.severidad}</span></td>
+            <td class="val">${i.valor === '' ? '<em>(vacío)</em>' : esc(mostrarEspacios(i.valor))}</td>
+            <td>${esc(i.motivo)}</td>
+            <td class="como">${esc(i.correccion)}</td>` : `
+            <td class="col">—</td><td class="val"><em>—</em></td><td>Sin observaciones.</td><td class="como">Lista para cargar.</td>`}
+        </tr>`).join('') + '</tbody>';
+    }).join('');
+    const nota = filas.length > MAX_FILAS_TABLA
+      ? `<p class="nota-tabla">Se muestran las primeras ${MAX_FILAS_TABLA} filas de ${filas.length.toLocaleString('es-MX')}. El reporte descargable incluye todas.</p>` : '';
+    return `<div class="tabla-caja"><table data-testid="tabla-resultados">
+      <thead><tr><th>Fila</th><th>Estado</th><th>Columna</th><th>Valor</th><th>Motivo</th><th>Cómo corregirlo</th></tr></thead>
+      ${cuerpo}</table></div>${nota}`;
+  }
+
+  /** Hace visibles los espacios al inicio/fin para que se entienda el error. */
+  const mostrarEspacios = v => String(v).replace(/^ +| +$/g, m => '·'.repeat(m.length));
+
+  // ---------------------------------------------------------------- Descargas
+  const base = () => estado.archivo.nombre.replace(/\.[^.]+$/, '');
+
+  function avisarDescarga(texto, error) {
+    const el = $('#estado-descarga');
+    if (el) { el.textContent = texto; el.classList.toggle('err', !!error); }
+  }
+
+  function descargar(fn, nombre) {
+    try { fn(); avisarDescarga(`Descargado: ${nombre}`); }
+    catch (e) { avisarDescarga('Este navegador bloqueó la descarga. Abre ValidaCarga en una pestaña normal e inténtalo de nuevo.', true); }
+  }
+
+  function guardarXlsx(aoa, hoja, nombre, anchos) {
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    if (anchos) ws['!cols'] = anchos.map(w => ({ wch: w }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, hoja);
+    XLSX.writeFile(wb, nombre);
+  }
+
+  function guardarCsv(aoa, nombre) {
+    const csv = XLSX.utils.sheet_to_csv(XLSX.utils.aoa_to_sheet(aoa));
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }); // BOM para que Excel respete acentos
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = nombre;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  function descargarReporte() {
+    const nombre = `${base()}_reporte_errores.xlsx`;
+    descargar(() => guardarXlsx(Validador.filasReporte(estado.resultado), 'Reporte', nombre, [10, 14, 12, 26, 28, 70, 60]), nombre);
+  }
+
+  function descargarValidas() {
+    const aoa = Validador.filasValidas(estado.resultado, estado.preparado.encabezados);
+    const nombre = `${base()}_filas_validas.${estado.archivo.tipo}`;
+    descargar(() => estado.archivo.tipo === 'csv' ? guardarCsv(aoa, nombre) : guardarXlsx(aoa, 'Datos', nombre), nombre);
+  }
+
+  // ---------------------------------------------------------------- Archivo marcado (colores con ExcelJS)
+  const EXCELJS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';
+  let cargaExcelJS = null;
+
+  /** Carga ExcelJS solo cuando se necesita (SheetJS gratuito no escribe colores de celda). */
+  function cargarExcelJS() {
+    if (window.ExcelJS) return Promise.resolve();
+    if (!cargaExcelJS) {
+      cargaExcelJS = new Promise((ok, falla) => {
+        const sc = document.createElement('script');
+        sc.src = EXCELJS_URL;
+        sc.onload = () => window.ExcelJS ? ok() : falla(new Error('sin ExcelJS'));
+        sc.onerror = () => { cargaExcelJS = null; falla(new Error('sin conexión')); };
+        document.head.appendChild(sc);
+      });
+    }
+    return cargaExcelJS;
+  }
+
+  const COLOR = {
+    encabezado: 'FF155F78', faltante: 'FFC0392B', blanco: 'FFFFFFFF',
+    error: 'FFF8D3CF', errorTexto: 'FF8E1B13', advertencia: 'FFFCEBC6', advertenciaTexto: 'FF6B4500',
+    vacioOpcional: 'FFF0F3F4', correcto: 'FFDDF0E4', correctoTexto: 'FF1F5C3A'
+  };
+  const relleno = argb => ({ type: 'pattern', pattern: 'solid', fgColor: { argb } });
+
+  async function descargarMarcado() {
+    const boton = $('#btn-marcado');
+    boton.disabled = true;
+    avisarDescarga('Preparando el archivo marcado…');
+    try {
+      await cargarExcelJS();
+    } catch (e) {
+      boton.disabled = false;
+      avisarDescarga('No se pudo cargar el generador de Excel con colores. Revisa tu conexión a internet e inténtalo de nuevo.', true);
+      return;
+    }
+    try {
+      const acumular = estado.modo === 'plantilla';
+      const nombre = acumular ? `${estado.plantilla.nombre.replace(/\.[^.]+$/, '')}_actualizado.xlsx` : `${base()}_marcado.xlsx`;
+      const buffer = acumular ? await construirBaseActualizada() : await construirMarcado();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = nombre;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1500);
+      avisarDescarga(`Descargado: ${nombre}`);
+    } catch (e) {
+      avisarDescarga('Este navegador bloqueó la descarga. Abre ValidaCarga en una pestaña normal e inténtalo de nuevo.', true);
+    } finally {
+      boton.disabled = false;
+    }
+  }
+
+  /**
+   * Hoja "Datos": columnas en el orden de la plantilla, llenas con lo compatible del archivo.
+   * Rojo = error o columna que tu archivo no trae · ámbar = advertencia. Cada celda marcada lleva una nota con el motivo.
+   * Hoja "Resumen": totales, columnas faltantes/no incluidas y la leyenda de colores.
+   */
+  async function construirMarcado() {
+    const perfil = perfilActual();
+    const r = estado.resultado;
+    const pre = estado.preparado;
+    const cols = perfil.columnas;
+    const libro = new ExcelJS.Workbook();
+    libro.creator = 'ValidaCarga';
+    const hoja = libro.addWorksheet('Datos', { views: [{ state: 'frozen', ySplit: 1 }] });
+
+    const extra = ['Fila original', 'Estado', 'Observaciones'];
+    const encabezado = hoja.addRow(cols.map(c => c.nombre).concat(extra));
+    encabezado.font = { bold: true, color: { argb: COLOR.blanco } };
+    encabezado.eachCell((cel, n) => {
+      const col = cols[n - 1];
+      const falta = col && r.faltantes.includes(col.nombre);
+      cel.fill = relleno(falta ? COLOR.faltante : COLOR.encabezado);
+      cel.alignment = { vertical: 'middle', wrapText: true };
+      if (falta) cel.note = `Tu archivo no trae esta columna${col.obligatorio ? ' y es obligatoria' : ''}. Se dejó vacía.`;
+    });
+    encabezado.height = 30;
+
+    const etiqueta = { correcto: 'Correcta', advertencia: 'Advertencia', error: 'Error', incompleta: 'Incompleta' };
+    r.filas.forEach(f => {
+      const porCol = {};
+      const sueltas = [];
+      f.incidencias.forEach(i => {
+        if (i.columna && cols.some(c => c.nombre === i.columna)) (porCol[i.columna] = porCol[i.columna] || []).push(i);
+        else sueltas.push(i);
+      });
+      const valores = cols.map(c => f.datos[c.nombre]);
+      // Si faltan columnas obligatorias, la fila no se puede cargar aunque lo que trae esté bien
+      const oblFaltantes = cols.filter(c => c.obligatorio && r.faltantes.includes(c.nombre)).map(c => c.nombre);
+      const estadoFila = f.estado === 'error' ? 'error' : (oblFaltantes.length ? 'incompleta' : f.estado);
+      const obs = f.incidencias.map(i => `${i.columna ? i.columna + ': ' : ''}${i.motivo}`)
+        .concat(oblFaltantes.length ? [`Falta llenar: ${oblFaltantes.join(', ')}`] : []).join(' | ');
+      const fila = hoja.addRow(valores.concat([f.fila, etiqueta[estadoFila], obs]));
+      cols.forEach((c, k) => {
+        const cel = fila.getCell(k + 1);
+        cel.numFmt = '@'; // conserva el texto tal cual (ceros a la izquierda, números largos)
+        const inc = porCol[c.nombre];
+        if (r.faltantes.includes(c.nombre)) {
+          cel.fill = relleno(c.obligatorio ? COLOR.error : COLOR.vacioOpcional);
+          if (c.obligatorio && f === r.filas[0]) cel.note = `Columna obligatoria que no viene en tu archivo. Hay que llenarla.`;
+        } else if (inc) {
+          const esError = inc.some(i => i.severidad === 'error');
+          cel.fill = relleno(esError ? COLOR.error : COLOR.advertencia);
+          cel.font = { color: { argb: esError ? COLOR.errorTexto : COLOR.advertenciaTexto }, bold: esError };
+          cel.note = inc.map(i => `${i.motivo}\nCómo corregirlo: ${i.correccion}`).join('\n\n');
+        }
+      });
+      const celEstado = fila.getCell(cols.length + 2);
+      const tono = { correcto: [COLOR.correcto, COLOR.correctoTexto], advertencia: [COLOR.advertencia, COLOR.advertenciaTexto], incompleta: [COLOR.advertencia, COLOR.advertenciaTexto], error: [COLOR.error, COLOR.errorTexto] }[estadoFila];
+      celEstado.fill = relleno(tono[0]);
+      celEstado.font = { bold: true, color: { argb: tono[1] } };
+      fila.getCell(cols.length + 3).alignment = { wrapText: true, vertical: 'top' };
+    });
+
+    hoja.columns.forEach((columna, k) => {
+      const nombre = k < cols.length ? cols[k].nombre : extra[k - cols.length];
+      columna.width = nombre === 'Observaciones' ? 70 : Math.min(40, Math.max(12, nombre.length + 4));
+    });
+    hoja.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: cols.length + extra.length } };
+
+    // Resumen
+    const res = libro.addWorksheet('Resumen');
+    res.columns = [{ width: 42 }, { width: 70 }];
+    const titulo = res.addRow(['ValidaCarga · archivo marcado']);
+    titulo.font = { bold: true, size: 14 };
+    res.addRow([]);
+    const nuevas = (pre.encabezados || []).filter((h, i) => String(h).trim() && !Object.values(r.indice).includes(i));
+    const s = r.resumen;
+    [
+      ['Archivo revisado', estado.archivo.nombre + (estado.archivo.pestanas && estado.archivo.pestanas.length > 1 ? ` (pestaña "${estado.archivo.pestanas[estado.archivo.hoja].nombre}")` : '')],
+      ['Revisado contra', estado.modo === 'plantilla' ? `Plantilla ${estado.plantilla.nombre}` : `Ejemplo: ${perfil.nombre}`],
+      ['Generado', new Date().toLocaleString('es-MX')],
+      ['Filas', s.total], ['Correctas', s.correcto], ['Con advertencia', s.advertencia], ['Con error', s.error],
+      ['Columnas de la plantilla que tu archivo no trae', r.faltantes.join(', ') || 'Ninguna'],
+      ['Columnas de tu archivo que no se incluyeron', nuevas.join(', ') || 'Ninguna']
+    ].forEach(([k, v]) => {
+      const fila = res.addRow([k, v]);
+      fila.getCell(1).font = { bold: true };
+      fila.getCell(2).alignment = { wrapText: true, horizontal: 'left' };
+    });
+    res.addRow([]);
+    res.addRow(['Colores']).font = { bold: true };
+    [
+      [COLOR.faltante, 'Encabezado rojo: la columna no viene en tu archivo'],
+      [COLOR.error, 'Celda roja: error (o columna obligatoria que no viene). Pasa el mouse para ver el motivo'],
+      [COLOR.advertencia, 'Celda ámbar: advertencia, revisar antes de subir'],
+      [COLOR.vacioOpcional, 'Celda gris: columna opcional que tu archivo no trae'],
+      [COLOR.advertencia, 'Estado "Incompleta": lo que trae la fila está bien, pero faltan columnas obligatorias por llenar']
+    ].forEach(([c, t]) => {
+      const fila = res.addRow(['', t]);
+      fila.getCell(1).fill = relleno(c);
+    });
+    return libro.xlsx.writeBuffer();
+  }
+
+  /** Convierte el texto validado al tipo de la columna en la base (número o fecha), para que se integre a lo que ya hay. */
+  function convertirValor(v, referencia) {
+    const t = String(v == null ? '' : v);
+    if (t.trim() === '') return null;
+    const ref = referencia && typeof referencia === 'object' && !(referencia instanceof Date) && 'result' in referencia ? referencia.result : referencia;
+    const f = Validador.leerFecha(t);
+    if (f && (ref instanceof Date || ref == null)) return f.fecha; // fecha real de Excel
+    if (typeof ref === 'number' || ref == null) {
+      const n = Validador.leerMonto(t);
+      const ceroIzq = /^0\d/.test(t.trim());
+      const largo = t.replace(/\D/g, '').length > 15;
+      if (n && !ceroIzq && !largo && (typeof ref === 'number' || /^-?\d+(\.\d+)?$/.test(t.trim()))) return n.numero;
+    }
+    return t;
+  }
+
+  /**
+   * ExcelJS guarda las validaciones celda por celda y al reescribirlas genera rangos duplicados
+   * (ordena "G10" antes que "G2"). Aquí se vuelven a juntar en rangos continuos por columna.
+   */
+  function compactarValidaciones(ws) {
+    const modelo = ws.dataValidations && ws.dataValidations.model;
+    if (!modelo) return;
+    const grupos = new Map();
+    Object.entries(modelo).forEach(([dir, v]) => {
+      const m = dir.match(/^([A-Z]+)(\d+)$/);
+      if (!m) { grupos.set('rango|' + dir, { rango: dir, v }); return; }
+      const k = JSON.stringify(v) + '|' + m[1];
+      if (!grupos.has(k)) grupos.set(k, { col: m[1], v, filas: [] });
+      grupos.get(k).filas.push(+m[2]);
+    });
+    const nuevo = {};
+    grupos.forEach(g => {
+      if (g.rango) { nuevo[g.rango] = g.v; return; }
+      g.filas.sort((a, b) => a - b);
+      let ini = g.filas[0], prev = ini;
+      const cerrar = () => { nuevo[ini === prev ? `${g.col}${ini}` : `${g.col}${ini}:${g.col}${prev}`] = g.v; };
+      g.filas.slice(1).forEach(f => { if (f === prev + 1) prev = f; else { cerrar(); ini = prev = f; } });
+      cerrar();
+    });
+    ws.dataValidations.model = nuevo;
+  }
+
+  function copiarEstilo(estilo) { return estilo ? JSON.parse(JSON.stringify(estilo)) : {}; }
+
+  /**
+   * Abre la plantilla (o archivo acumulado) original y agrega abajo las filas de tu archivo, solo en las columnas compatibles.
+   * Conserva las demás pestañas. Agrega "ValidaCarga Revisión" y "ValidaCarga Resumen".
+   */
+  async function construirBaseActualizada() {
+    const p = estado.plantilla;
+    const m = p.modelo;
+    const r = estado.resultado;
+    const perfil = Plantilla.perfil(m, { obligatorios: estado.obligatorios });
+    const oblig = Object.fromEntries(perfil.columnas.map(c => [c.nombre, c.obligatorio]));
+    const libro = new ExcelJS.Workbook();
+    await libro.xlsx.load(p.bytes);
+    const hoja = libro.getWorksheet(m.hoja);
+    if (!hoja) throw new Error('No encontré la pestaña del formato en la plantilla.');
+
+    // Última fila con datos en las columnas que se van a llenar
+    const escribibles = m.columnas.filter(c => r.indice[c.nombre] !== undefined);
+    const conValor = v => v !== null && v !== undefined && String(typeof v === 'object' && 'result' in v ? v.result : v).trim() !== '';
+    let ultima = m.filaEncabezados;
+    hoja.eachRow({ includeEmpty: false }, (fila, n) => {
+      if (n > ultima && escribibles.some(c => conValor(fila.getCell(c.indice + 1).value))) ultima = n;
+    });
+    const modelo = ultima > m.filaEncabezados ? hoja.getRow(ultima) : null;
+    const primeraNueva = ultima + 1;
+
+    const revision = [];
+    r.filas.forEach((f, k) => {
+      const n = primeraNueva + k;
+      const fila = hoja.getRow(n);
+      const porCol = {};
+      f.incidencias.forEach(i => { (porCol[i.columna] = porCol[i.columna] || []).push(i); });
+      m.columnas.forEach(c => {
+        const cel = fila.getCell(c.indice + 1);
+        const ref = modelo ? modelo.getCell(c.indice + 1) : null;
+        const presente = r.indice[c.nombre] !== undefined;
+        if (!presente && !(oblig[c.nombre])) return; // columnas que tu archivo no trae: no se tocan (pueden tener fórmulas)
+        if (ref && ref.style) cel.style = copiarEstilo(ref.style);
+        if (presente) cel.value = convertirValor(f.datos[c.nombre], ref ? ref.value : null);
+        if (cel.value instanceof Date && !cel.numFmt) cel.numFmt = 'dd/mm/yyyy';
+        const inc = porCol[c.nombre];
+        if (!presente) {
+          cel.fill = relleno(COLOR.error);
+          cel.note = 'Falta: tu archivo no trae esta columna y es obligatoria.';
+        } else if (inc) {
+          const esError = inc.some(i => i.severidad === 'error');
+          cel.fill = relleno(esError ? COLOR.error : COLOR.advertencia);
+          cel.font = Object.assign({}, cel.font || {}, { color: { argb: esError ? 'FFC0392B' : COLOR.advertenciaTexto }, bold: esError });
+          cel.note = inc.map(i => `${i.motivo}\nCómo corregirlo: ${i.correccion}`).join('\n\n');
+        }
+      });
+      f.incidencias.forEach(i => revision.push([n, f.fila, { error: 'Error', advertencia: 'Advertencia' }[i.severidad], i.columna, i.valor, i.motivo, i.correccion]));
+      r.faltantes.filter(c => oblig[c]).forEach(c => revision.push([n, f.fila, 'Falta', c, '', 'Tu archivo no trae esta columna obligatoria.', 'Llenarla en la base.']));
+    });
+
+    // Pestañas de ValidaCarga (se reemplazan si ya existían de una corrida anterior)
+    ['ValidaCarga Revisión', 'ValidaCarga Resumen'].forEach(nom => { const h = libro.getWorksheet(nom); if (h) libro.removeWorksheet(h.id); });
+
+    const rev = libro.addWorksheet('ValidaCarga Revisión', { views: [{ state: 'frozen', ySplit: 1 }] });
+    rev.columns = [
+      { header: 'Fila en la base', width: 14 }, { header: 'Fila en tu archivo', width: 16 }, { header: 'Tipo', width: 13 },
+      { header: 'Columna', width: 24 }, { header: 'Valor', width: 26 }, { header: 'Motivo', width: 70 }, { header: 'Cómo corregirlo', width: 55 }
+    ];
+    rev.getRow(1).font = { bold: true, color: { argb: COLOR.blanco } };
+    rev.getRow(1).eachCell(c => { c.fill = relleno(COLOR.encabezado); });
+    revision.forEach(fila => {
+      const nueva = rev.addRow(fila);
+      const tipo = nueva.getCell(3);
+      tipo.fill = relleno(fila[2] === 'Advertencia' ? COLOR.advertencia : COLOR.error);
+      nueva.getCell(6).alignment = { wrapText: true, vertical: 'top' };
+      nueva.getCell(7).alignment = { wrapText: true, vertical: 'top' };
+    });
+    if (!revision.length) rev.addRow(['', '', 'Sin observaciones: todas las filas nuevas pasaron.']);
+    rev.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: 7 } };
+
+    const res = libro.addWorksheet('ValidaCarga Resumen');
+    res.columns = [{ width: 44 }, { width: 70 }];
+    res.addRow(['ValidaCarga · filas agregadas']).font = { bold: true, size: 14 };
+    res.addRow([]);
+    const s = r.resumen;
+    const nuevas = (estado.preparado.encabezados || []).filter((h, i) => String(h).trim() && !Object.values(r.indice).includes(i));
+    [
+      ['Archivo de origen', estado.archivo.nombre + (estado.archivo.pestanas && estado.archivo.pestanas.length > 1 ? ` (pestaña "${estado.archivo.pestanas[estado.archivo.hoja].nombre}")` : '')],
+      ['Pestaña donde se agregaron', `${m.hoja}, filas ${primeraNueva} a ${primeraNueva + r.filas.length - 1}`],
+      ['Generado', new Date().toLocaleString('es-MX')],
+      ['Filas agregadas', s.total], ['Sin observaciones', s.correcto], ['Con advertencia', s.advertencia], ['Con error', s.error],
+      ['Columnas obligatorias que tu archivo no trae', r.faltantes.filter(c => oblig[c]).join(', ') || 'Ninguna'],
+      ['Columnas de tu archivo que no se agregaron', nuevas.join(', ') || 'Ninguna']
+    ].forEach(([k, v]) => {
+      const fila = res.addRow([k, v]);
+      fila.getCell(1).font = { bold: true };
+      fila.getCell(2).alignment = { wrapText: true, horizontal: 'left' };
+    });
+    res.addRow([]);
+    res.addRow(['Colores en las filas agregadas']).font = { bold: true };
+    [[COLOR.error, 'Rojo: la celda falló (o es obligatoria y no venía). Pasa el mouse para ver el motivo'],
+     [COLOR.advertencia, 'Ámbar: advertencia, revisar antes de usar']].forEach(([c, t]) => { res.addRow(['', t]).getCell(1).fill = relleno(c); });
+
+    // Reescribe en formato clásico las listas modernas (x14) que ExcelJS no conserva
+    (m.validacionesX14 || []).forEach(v => {
+      const modelo = hoja.dataValidations.model;
+      String(v.sqref).split(/\s+/).filter(Boolean).forEach(rango => {
+        const r1 = rango.split(':')[0];
+        if (modelo[r1] || modelo[rango]) return; // ya existe
+        const regla = { type: v.type, allowBlank: v.allowBlank, showErrorMessage: true, formulae: [v.f1.replace(/^=/, '')].concat(v.f2 ? [v.f2] : []) };
+        if (v.operator) regla.operator = v.operator;
+        modelo[rango] = regla;
+      });
+    });
+    libro.worksheets.forEach(compactarValidaciones);
+    return libro.xlsx.writeBuffer();
+  }
+
+  function descargarPlantillaEjemplo() {
+    const p = Perfiles.porId[estado.perfilId];
+    try { guardarXlsx([p.muestra.encabezados, p.muestra.filas[0]], 'Datos', `plantilla_${p.id}.xlsx`, p.muestra.encabezados.map(h => Math.max(14, h.length + 4))); }
+    catch (e) { /* descarga bloqueada por el navegador */ }
+  }
+
+  // ---------------------------------------------------------------- Eventos
+  function zonaArrastre(zona, alSoltar) {
+    zona.tabIndex = -1;
+    ['dragenter', 'dragover'].forEach(ev => zona.addEventListener(ev, e => { e.preventDefault(); if (!zona.classList.contains('bloqueada')) zona.classList.add('arrastrando'); }));
+    ['dragleave', 'drop'].forEach(ev => zona.addEventListener(ev, e => { e.preventDefault(); zona.classList.remove('arrastrando'); }));
+    zona.addEventListener('drop', e => { if (!zona.classList.contains('bloqueada')) alSoltar(e.dataTransfer.files[0]); });
+  }
+
+  function iniciar() {
+    pintarPerfiles();
+
+    document.querySelectorAll('[data-modo]').forEach(b => b.addEventListener('click', () => {
+      if (estado.modo === b.dataset.modo) return;
+      estado.modo = b.dataset.modo;
+      estado.filtro = 'todas';
+      if (estado.archivo && estado.archivo.esMuestra) {
+        if (estado.modo === 'ejemplos') cargarMuestraEjemplo();
+        else if (estado.plantilla && estado.plantilla.esDemo) cargarDemo();
+        else { estado.archivo = null; validarActual(); }
+      } else validarActual();
+    }));
+
+    $('#perfiles').addEventListener('change', e => {
+      estado.perfilId = e.target.value;
+      if (estado.archivo && estado.archivo.esMuestra) cargarMuestraEjemplo();
+      else validarActual();
+    });
+
+    const inPlantilla = $('#input-plantilla');
+    inPlantilla.addEventListener('change', () => { recibirPlantilla(inPlantilla.files[0]); inPlantilla.value = ''; });
+    zonaArrastre($('#zona-plantilla'), recibirPlantilla);
+
+    const input = $('#input-archivo');
+    input.addEventListener('change', () => { recibirArchivo(input.files[0]); input.value = ''; });
+    zonaArrastre($('#zona'), recibirArchivo);
+
+    $('#btn-muestra').addEventListener('click', () => estado.modo === 'plantilla' ? cargarDemo() : cargarMuestraEjemplo());
+    $('#btn-plantilla').addEventListener('click', descargarPlantillaEjemplo);
+    $('#btn-limpiar').addEventListener('click', limpiar);
+
+    cargarDemo(); // abre con la plantilla de ejemplo para que se vea qué hace
+  }
+
+  if (typeof XLSX === 'undefined') {
+    document.getElementById('resultados').innerHTML =
+      '<div class="aviso err">No se pudo cargar el lector de Excel. Revisa tu conexión a internet y recarga la página.</div>';
+    return;
+  }
+  iniciar();
+})();
+
+</script>
+<script>
+  document.getElementById('btn-tema').addEventListener('click', function () {
+    var raiz = document.documentElement;
+    var claro = raiz.getAttribute('data-theme') !== 'light';
+    if (claro) raiz.setAttribute('data-theme', 'light'); else raiz.setAttribute('data-theme', 'dark');
+    try { localStorage.setItem('validacarga-tema', claro ? 'light' : 'dark'); } catch (e) {}
+  });
+  if (!window.Validador || !window.Perfiles || !window.Plantilla) {
+    document.getElementById('resultados').innerHTML = '<div class="aviso err" style="border:1px solid #b4322b;padding:12px;border-radius:8px">No se encontraron los archivos de la app (carpetas <b>css</b> y <b>js</b>). Si abriste esta página desde dentro del .zip, primero extrae todo el contenido (clic derecho en el .zip → Extraer todo) y abre el index.html de la carpeta extraída.</div>';
+  }
+</script>
+</body>
+</html>

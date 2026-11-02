@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ValidaCarga</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Valida archivos Excel o CSV fila por fila antes de subirlos a un portal. Todo corre en tu navegador.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="css/estilos.css">
+<script>
+  try { if (localStorage.getItem('validacarga-tema') === 'light') document.documentElement.setAttribute('data-theme', 'light'); } catch (e) {}
+</script>
+</head>
+<body>
+<div class="franja">
+  <div class="marco">
+    <header class="cabecera">
+      <div class="marca">
+        <div class="logo">
+          <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true">
+            <rect x="1" y="1" width="38" height="38" rx="9" style="fill:var(--acento-fuerte)"/>
+            <g style="fill:var(--sobre-acento)" opacity=".28"><rect x="8" y="9" width="24" height="5" rx="1.5"/><rect x="8" y="17.5" width="24" height="5" rx="1.5"/><rect x="8" y="26" width="24" height="5" rx="1.5"/></g>
+            <rect x="8" y="9" width="5" height="5" rx="1.5" style="fill:var(--ok)"/>
+            <rect x="8" y="17.5" width="5" height="5" rx="1.5" style="fill:var(--warn)"/>
+            <rect x="8" y="26" width="5" height="5" rx="1.5" style="fill:var(--err)"/>
+          </svg>
+          <h1>Valida<span>Carga</span></h1>
+        </div>
+        <p>Revisa tu archivo fila por fila contra la plantilla oficial del portal antes de subirlo: qué está bien, qué falla, por qué y cómo corregirlo.</p>
+      </div>
+      <div class="cabecera-der">
+        <div class="privacidad" data-testid="aviso-privacidad">
+          <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1 2 3.5v4C2 11 4.6 14.2 8 15c3.4-.8 6-4 6-7.5v-4L8 1Zm0 1.6 4.5 1.9v3c0 2.7-1.9 5.3-4.5 6V2.6Z"/></svg>
+          Tu archivo no sale de esta computadora
+        </div>
+        <button type="button" class="tema" id="btn-tema" data-testid="btn-tema" aria-label="Cambiar entre tema oscuro y claro">
+          <span class="t-oscuro"><svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.2 1.3A6.8 6.8 0 1 0 14.7 9.8 5.6 5.6 0 0 1 6.2 1.3Z"/></svg>Oscuro</span>
+          <span class="t-claro"><svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3.2" fill="currentColor"/><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 1v1.6M8 13.4V15M1 8h1.6M13.4 8H15M3 3l1.1 1.1M11.9 11.9 13 13M3 13l1.1-1.1M11.9 4.1 13 3"/></g></svg>Claro</span>
+        </button>
+      </div>
+    </header>
+    <ol class="recorrido" aria-label="Cómo funciona">
+      <li><b>Sube la plantilla oficial</b> del portal</li>
+      <li><b>Sube tu archivo</b> lleno</li>
+      <li><b>Corrige</b> y descarga solo las filas válidas</li>
+    </ol>
+  </div>
+</div>
+
+<div class="marco">
+
+  <main class="mesa">
+    <aside class="panel" aria-label="Configuración">
+      <section class="paso">
+        <span class="etiqueta" id="lbl-modo">1 · Contra qué reviso tu archivo</span>
+        <div class="segmentos" role="group" aria-labelledby="lbl-modo">
+          <button type="button" class="segmento" data-modo="plantilla" data-testid="modo-plantilla" aria-pressed="true">Plantilla oficial</button>
+          <button type="button" class="segmento" data-modo="ejemplos" data-testid="modo-ejemplos" aria-pressed="false">Ejemplos</button>
+        </div>
+
+        <div id="panel-plantilla" class="subpanel">
+          <label class="zona" id="zona-plantilla" data-testid="zona-plantilla">
+            <input type="file" id="input-plantilla" data-testid="input-plantilla" accept=".xlsx">
+            <strong>Sube la plantilla oficial del portal</strong>
+            <small>El Excel en blanco que te da el portal para llenar (.xlsx). De ahí salen las columnas y las listas.</small>
+          </label>
+          <div id="plantilla-actual" data-testid="plantilla-actual"></div>
+        </div>
+
+        <div id="panel-ejemplos" class="subpanel" hidden>
+          <p class="sub">Perfiles armados a partir de tres bugs reales. Datos ficticios.</p>
+          <fieldset class="perfiles" id="perfiles" aria-label="Perfil de ejemplo"></fieldset>
+        </div>
+      </section>
+
+      <section class="paso">
+        <span class="etiqueta">2 · Tu archivo</span>
+        <label class="zona" id="zona" data-testid="zona-carga">
+          <input type="file" id="input-archivo" data-testid="input-archivo" accept=".xlsx,.xls,.csv">
+          <strong id="zona-texto">Arrastra tu Excel o CSV aquí</strong>
+          <small>o haz clic para elegirlo · .xlsx, .xls, .csv</small>
+        </label>
+        <div class="archivo-actual" id="archivo-actual" data-testid="archivo-actual"></div>
+        <div class="botones">
+          <button class="boton" id="btn-muestra" data-testid="btn-muestra" type="button">Probar con archivo de ejemplo</button>
+          <button class="boton" id="btn-plantilla" data-testid="btn-descargar-plantilla" type="button" hidden>Descargar plantilla</button>
+        </div>
+        <button class="boton limpiar" id="btn-limpiar" data-testid="btn-limpiar" type="button">Limpiar y empezar de nuevo</button>
+      </section>
+    </aside>
+
+    <section class="resultados" aria-live="polite" id="resultados" data-testid="resultados"></section>
+  </main>
+
+  <footer class="pie">
+    <span>ValidaCarga · proyecto de portafolio QA de Adina Varela. La plantilla, los perfiles y los datos de ejemplo son ficticios.</span>
+    <a href="https://github.com/adinavarela-hue/validacarga" target="_blank" rel="noopener">Código y pruebas en GitHub</a>
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="js/validador.js"></script>
+<script src="js/perfiles.js"></script>
+<script src="js/plantilla.js"></script>
+<script src="js/demo-plantilla.js"></script>
+<script src="js/app.js"></script>
+<script>
+  document.getElementById('btn-tema').addEventListener('click', function () {
+    var raiz = document.documentElement;
+    var claro = raiz.getAttribute('data-theme') !== 'light';
+    if (claro) raiz.setAttribute('data-theme', 'light'); else raiz.setAttribute('data-theme', 'dark');
+    try { localStorage.setItem('validacarga-tema', claro ? 'light' : 'dark'); } catch (e) {}
+  });
+  if (!window.Validador || !window.Perfiles || !window.Plantilla) {
+    document.getElementById('resultados').innerHTML = '<div class="aviso err" style="border:1px solid #b4322b;padding:12px;border-radius:8px">No se encontraron los archivos de la app (carpetas <b>css</b> y <b>js</b>). Si abriste esta página desde dentro del .zip, primero extrae todo el contenido (clic derecho en el .zip → Extraer todo) y abre el index.html de la carpeta extraída.</div>';
+  }
+</script>
+</body>
+</html>
