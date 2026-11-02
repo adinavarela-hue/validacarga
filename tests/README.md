@@ -38,7 +38,7 @@ py -3.12 -m pytest --html=reporte/reporte.html --self-contained-html
 Las pruebas marcadas `xfail(strict=True)` documentan un bug abierto: la suite sigue en verde,
 y cuando el bug se corrija la prueba falla a propósito para avisar que hay que quitar la marca.
 
-- `test_cp029_fila_incompleta_no_aparece_como_correcta`: con columnas obligatorias faltantes, la fila aparece como "Correcta".
+- **VAL-1** · `test_cp029_fila_incompleta_no_aparece_como_correcta`: con columnas obligatorias faltantes, la fila aparece como "Correcta".
 
 ## Resultado de referencia
 

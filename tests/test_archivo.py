@@ -58,7 +58,7 @@ def test_cp029_columnas_obligatorias_faltantes(app):
     expect(app.t('btn-descargar-validas')).to_be_disabled()
 
 
-@pytest.mark.xfail(strict=True, reason='Bug conocido: con columnas obligatorias faltantes la fila aparece como "Correcta" (ver Jira)')
+@pytest.mark.xfail(strict=True, reason='VAL-1: con columnas obligatorias faltantes la fila aparece como "Correcta"')
 def test_cp029_fila_incompleta_no_aparece_como_correcta(app):
     app.subir_archivo(DATOS / 'columnas_faltantes.xlsx')
     assert app.estado_fila(2) != 'correcto'

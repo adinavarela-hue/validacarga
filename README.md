@@ -61,3 +61,15 @@ https://adinavarela-hue.github.io/validacarga/
 - [Casos de prueba](docs/casos-de-prueba.xlsx) — 57 casos con valores límite, clases de equivalencia, tablas de decisión y trazabilidad a funciones y riesgos. Se generan desde `tests/casos_de_prueba.py` con `python tests/generar_casos_xlsx.py`.
 - Datos de prueba en `tests/datos/` (se regeneran con `python tests/generar_datos.py`).
 - [Pruebas automatizadas](tests/README.md) con Playwright + pytest: 55 casos automatizados, Page Object, revisión de los Excel descargados y de la red. Corren solas en GitHub Actions en cada cambio.
+
+## Bugs encontrados
+
+Registrados en Jira (espacio **ValidaCarga**, clave VAL) con pasos, resultado esperado, resultado obtenido, severidad y el caso de prueba que los detectó.
+
+| Bug | Resumen | Severidad | Caso | Estado |
+|---|---|---|---|---|
+| VAL-1 | Fila con columnas obligatorias faltantes aparece como "Correcta" | Alta | CP-029 | Abierto · documentado con `xfail` estricto |
+| VAL-2 | Error de JavaScript al pasar a "Ejemplos" con una plantilla cargada | Media | CP-057 | Corregido y verificado |
+| VAL-3 | "Agregar a mi archivo" duplica las listas desplegables y pierde las de formato moderno | Alta | CP-046, CP-047 | Corregido y verificado |
+
+**Última corrida (02/11/2026):** 54 de 57 casos aprobados, 1 fallido (VAL-1), 2 manuales pendientes. Resultados por caso en [`docs/casos-de-prueba.xlsx`](docs/casos-de-prueba.xlsx).
