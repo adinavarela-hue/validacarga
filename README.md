@@ -56,4 +56,6 @@ https://adinavarela-hue.github.io/validacarga/
 ## Pruebas
 
 - [Plan de pruebas](docs/plan-de-pruebas.md) — alcance, riesgos, técnicas, criterios y gestión de defectos.
-- Casos de prueba y pruebas automatizadas (Playwright + pytest): *en construcción.*
+- [Casos de prueba](docs/casos-de-prueba.xlsx) — 57 casos con valores límite, clases de equivalencia, tablas de decisión y trazabilidad a funciones y riesgos. Se generan desde `tests/casos_de_prueba.py` con `python tests/generar_casos_xlsx.py`.
+- Datos de prueba en `tests/datos/` (se regeneran con `python tests/generar_datos.py`).
+- Pruebas automatizadas (Playwright + pytest): *en construcción.*
