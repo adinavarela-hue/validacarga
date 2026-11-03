@@ -4,6 +4,8 @@
 
 Validador de archivos de carga masiva (Excel / CSV) que revisa cada fila **antes** de subirla a un portal y explica qué falla, en qué columna, por qué y cómo corregirlo.
 
+![ValidaCarga revisando un archivo fila por fila](docs/capturas/vista-general.png)
+
 Proyecto de portafolio QA de **Adina Varela**. Nació de tres bugs reales que encontré en mi trabajo en telecomunicaciones:
 
 | Perfil | Bug real que lo originó |
